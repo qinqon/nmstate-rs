@@ -29,5 +29,6 @@
 extern crate nmstate;
 
 fn main() {
-    println!("{}", nmstate::show().unwrap().to_string());
+//    println!("{}", nmstate::show().unwrap().to_json_string());
+    println!("{}", nmstate::show().unwrap().to_yaml_string());
 }

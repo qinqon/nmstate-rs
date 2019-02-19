@@ -10,6 +10,7 @@ path = "lib.rs"
 [dependencies]
 serde = { version = "1.0", features = ["derive"] }
 serde_json = {version = "1.0"}
+serde_yaml = {version = "0.8"}
 
 [dependencies.nm]
 git = "https://github.com/balena-io-modules/libnm-rs"

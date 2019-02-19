@@ -29,6 +29,7 @@
 extern crate nm;
 extern crate serde;
 extern crate serde_json;
+extern crate serde_yaml;
 
 mod error;
 mod iface;
@@ -43,8 +44,11 @@ pub struct NmState {
 }
 
 impl NmState {
-    pub fn to_string(self) -> String {
+    pub fn to_json_string(self) -> String {
         serde_json::to_string_pretty(&self).unwrap()
+    }
+    pub fn to_yaml_string(self) -> String {
+        serde_yaml::to_string(&self).unwrap()
     }
 }
 
