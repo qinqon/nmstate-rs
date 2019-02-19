@@ -1,0 +1,13 @@
+[package]
+name = "nmstatectl"
+version = "0.1.0"
+authors = ["Gris Ge <fge@redhat.com>"]
+
+[[bin]]
+name = "nmstatectl"
+path = "nmstatectl.rs"
+
+[dependencies]
+
+[dependencies.nmstate]
+path = "../libnmstate"

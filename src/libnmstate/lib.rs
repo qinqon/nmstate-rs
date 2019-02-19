@@ -1,0 +1,55 @@
+// Copyright (C) 2019 Red Hat, Inc.
+//
+// Permission is hereby granted, free of charge, to any
+// person obtaining a copy of this software and associated
+// documentation files (the "Software"), to deal in the
+// Software without restriction, including without
+// limitation the rights to use, copy, modify, merge,
+// publish, distribute, sublicense, and/or sell copies of
+// the Software, and to permit persons to whom the Software
+// is furnished to do so, subject to the following
+// conditions:
+//
+// The above copyright notice and this permission notice
+// shall be included in all copies or substantial portions
+// of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF
+// ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED
+// TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A
+// PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT
+// SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+// CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+// OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR
+// IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+// DEALINGS IN THE SOFTWARE.
+//
+// Author: Gris Ge <fge@redhat.com>
+
+extern crate nm;
+extern crate serde;
+extern crate serde_json;
+
+mod error;
+mod iface;
+
+use error::*;
+use iface::NmStateInterface;
+use serde::Serialize;
+
+#[derive(Debug, Serialize)]
+pub struct NmState {
+    pub interfaces: Vec<NmStateInterface>,
+}
+
+impl NmState {
+    pub fn to_string(self) -> String {
+        serde_json::to_string_pretty(&self).unwrap()
+    }
+}
+
+pub fn show() -> Result<NmState> {
+    let client = nm::Client::new(None).unwrap();
+    let ifaces = NmStateInterface::list(&client)?;
+    Ok(NmState { interfaces: ifaces })
+}

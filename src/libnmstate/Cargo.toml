@@ -1,0 +1,16 @@
+[package]
+name = "nmstate"
+version = "0.1.0"
+authors = ["Gris Ge <fge@redhat.com>"]
+
+[lib]
+#name = "nmstate"
+path = "lib.rs"
+
+[dependencies]
+serde = { version = "1.0", features = ["derive"] }
+serde_json = {version = "1.0"}
+
+[dependencies.nm]
+git = "https://github.com/balena-io-modules/libnm-rs"
+
