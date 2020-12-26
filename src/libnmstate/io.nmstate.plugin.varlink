@@ -1,0 +1,18 @@
+interface io.nmstate.plugin
+
+type NetIface (
+    name: string,
+    type: string
+)
+
+type NetState (
+    interfaces: ?[]NetIface
+)
+
+method GenerateConfigs(net_state: NetState) -> (logs: []string, confs: []string)
+
+error NmStatePluginErr (
+    kind: string,
+    error_message: string,
+    logs: []string
+)

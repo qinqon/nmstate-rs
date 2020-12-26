@@ -2,12 +2,13 @@
 name = "nmstatectl"
 version = "0.1.0"
 authors = ["Gris Ge <fge@redhat.com>"]
+edition = "2018"
 
 [[bin]]
 name = "nmstatectl"
 path = "nmstatectl.rs"
 
 [dependencies]
-
-[dependencies.nmstate]
-path = "../libnmstate"
+nmstate = {path = "../libnmstate"}
+serde_yaml = "0.8"
+clap = "2.33"

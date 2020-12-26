@@ -2,4 +2,5 @@
 members = [
     "src/nmstatectl",
     "src/libnmstate",
+    "src/plugin_nm",
 ]
