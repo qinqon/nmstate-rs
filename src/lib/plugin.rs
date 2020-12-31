@@ -183,6 +183,7 @@ fn connect_varlink(socket_path: &str) -> Result<VarlinkClient, NmstateError> {
                 }
             }
         };
+        println!("DEBUG: varlink to plugin {} connected", socket_path);
         return Ok(VarlinkClient::new(connection));
     }
     Err(NmstateError::invalid_argument(format!(
@@ -196,6 +197,5 @@ fn stop_child(child: &mut std::process::Child, name: &str) {
     if let Err(e) = child.kill() {
         eprintln!("Failed to kill plugin {} child process {}: {}", name, id, e);
     }
-    child.wait();
-    println!("DEBUG: plugin {} child process {} terminated", name, id);
+    println!("DEBUG: plugin {} child process {} stopped", name, id);
 }

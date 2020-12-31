@@ -19,8 +19,8 @@ impl std::fmt::Display for NmstateError {
 
 #[derive(Debug)]
 pub struct NmstateError {
-    kind: ErrorKind,
-    msg: String,
+    pub kind: ErrorKind,
+    pub msg: String,
 }
 
 impl NmstateError {

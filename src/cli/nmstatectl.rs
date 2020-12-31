@@ -44,7 +44,7 @@ fn print_result_and_exit(result: Result<String, CliError>) {
         Ok(s) => {
             println!("{}", s);
             std::process::exit(0);
-        }
+ n       }
         Err(e) => {
             eprintln!("{}", e);
             std::process::exit(1);

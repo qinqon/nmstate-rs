@@ -1,6 +1,6 @@
 [workspace]
 members = [
-    "src/nmstatectl",
-    "src/libnmstate",
-    "src/plugin_nm",
+    "src/lib",
+    "src/cli",
+    "src/plugin_nmrs",
 ]

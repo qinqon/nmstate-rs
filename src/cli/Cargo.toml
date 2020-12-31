@@ -9,6 +9,6 @@ name = "nmstatectl"
 path = "nmstatectl.rs"
 
 [dependencies]
-nmstate = {path = "../libnmstate"}
+nmstate = {path = "../lib"}
 serde_yaml = "0.8"
 clap = "2.33"
