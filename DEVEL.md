@@ -1,19 +1,27 @@
-## Plugin design
- * All plugins are executable.
- * The search folder of nmstate system variable `NMSTATE_PLUGIN_FOLDER` and
-   default to `/usr/bin`.
- * Plugin is named `nmstate_plugin_<plugin_name>`.
- * Plugin will take first argument as varlink socket file path.
- * `libnmstate` will retry 50 times with 0.1 seconds interval to wait
-   plugin varlink interface up.
- * The `libnmstate` will invoke the plugin as child thread and communicate
-   with it varlink and terminate this child thread once done.
- * The varlink interface file is `src/libnmstate/io.nmstate.plugin.varlink`.
+## Top design
+ * Top level code
+    * Merging from current status
+    * Verification
+ * Native Plugins
+    * Nispor
+        * Query Kernel network status
+        * TBD: Apply in-memory network config
+    * NetworkManager
+        * Persist network config with checkpoint support
 
-## Use plugin build from git repo
+ * TBD: Third party plugin
+    * Plugin is executable file.
+    * The libnmstate will start the plugin with socket patch as first argument.
+    * The libnmstate will communicate with plugin through this socket path.
+    * JSON format is used for request and reply.
 
-```bash
-cargo build
-sudo env NMSTATE_PLUGIN_FOLDER=./target/debug/ \
-    ./target/debug/nmstatectl gc ~/ymls/eth/eth1_up.yml
-```
+
+## NetworkManager plugin
+ * Use DBUS interface via crate `libnm_dbus` for communication with NM daemon.
+ * Update keyfile base on desire and current config.
+ * Create check point
+ * Instruct NM daemon to reload config.
+ * Grouping activation.
+ * Skip activation of certain interface if state match.
+ * Destroy or rollback checkpoint
+
