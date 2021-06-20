@@ -17,6 +17,7 @@ pub enum ErrorKind {
     DbusConnectionError,
     CheckpointConflict,
     InvalidArgument,
+    Bug,
 }
 
 #[derive(Debug)]

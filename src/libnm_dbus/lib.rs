@@ -42,15 +42,44 @@ impl<'a> NmApi<'a> {
         self.dbus.checkpoint_destroy(checkpoint)
     }
 
-    pub fn activate(_connection_uuid: &str) {
+    pub fn activate(&self, uuid: &str) -> Result<(), NmError> {
+        let nm_conn = self.dbus.get_connection_by_uuid(uuid)?;
+        self.dbus.activate(&nm_conn)
+    }
+
+    pub fn deactivate(&self, uuid: &str) -> Result<(), NmError> {
+        let nm_ac = get_active_connection_by_uuid(&self.dbus, uuid)?;
+
+        if !nm_ac.is_empty() {
+            self.dbus.deactivate(&nm_ac)
+        } else {
+            Ok(())
+        }
+    }
+
+    pub fn reapply(_uuid: &str) {
         todo!()
     }
 
-    pub fn deactivate(_connection_uuid: &str) {
+    pub fn add_connection(&self, content: &str) -> Result<String, NmError> {
         todo!()
     }
 
-    pub fn reapply(_connection_uuid: &str) {
+    pub fn reload_connections(&self) -> Result<(), NmError> {
         todo!()
     }
+}
+
+fn get_active_connection_by_uuid(
+    dbus: &NmDbus,
+    uuid: &str,
+) -> Result<String, NmError> {
+    let nm_acs = dbus.active_connections()?;
+
+    for nm_ac in nm_acs {
+        if dbus.get_nm_ac_uuid(&nm_ac)? == uuid {
+            return Ok(nm_ac);
+        }
+    }
+    Ok("".into())
 }

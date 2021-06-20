@@ -16,4 +16,13 @@ fn test_full() {
 
     nm.checkpoint_destroy(&cp).unwrap();
     println!("checkpoint_destroy: done");
+
+    let conn_uuid = "7300353a-0a72-4815-a12c-4720b6c2f1a0";
+
+    nm.activate(conn_uuid).unwrap();
+    println!("connection {} activated", conn_uuid);
+
+    std::thread::sleep(std::time::Duration::from_millis(100));
+    nm.deactivate(conn_uuid).unwrap();
+    println!("connection {} deactivated", conn_uuid);
 }
