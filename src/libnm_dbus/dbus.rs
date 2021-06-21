@@ -75,6 +75,15 @@ impl<'a> NmDbus<'a> {
             .checkpoint_destroy(&str_to_obj_path(checkpoint)?)?)
     }
 
+    pub(crate) fn checkpoint_rollback(
+        &self,
+        checkpoint: &str,
+    ) -> Result<(), NmError> {
+        self.proxy
+            .checkpoint_rollback(&str_to_obj_path(checkpoint)?)?;
+        Ok(())
+    }
+
     pub(crate) fn get_connection_by_uuid(
         &self,
         uuid: &str,
@@ -103,6 +112,11 @@ impl<'a> NmDbus<'a> {
 
     pub(crate) fn deactivate(&self, nm_ac: &str) -> Result<(), NmError> {
         Ok(self.proxy.deactivate_connection(&str_to_obj_path(nm_ac)?)?)
+    }
+
+    pub(crate) fn reload_connections(&self) -> Result<(), NmError> {
+        self.setting_proxy.reload_connections()?;
+        Ok(())
     }
 
     pub(crate) fn get_nm_ac_uuid(

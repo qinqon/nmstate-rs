@@ -10,3 +10,4 @@ path = "lib.rs"
 [dependencies]
 zbus = "1.9.1"
 zvariant = "2.7.0"
+libc = "0.2.97"

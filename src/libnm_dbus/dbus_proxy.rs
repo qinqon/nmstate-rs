@@ -28,6 +28,12 @@ trait NetworkManager {
         checkpoint: &zvariant::ObjectPath,
     ) -> zbus::Result<()>;
 
+    /// CheckpointRollback method
+    fn checkpoint_rollback(
+        &self,
+        checkpoint: &zvariant::ObjectPath,
+    ) -> zbus::Result<std::collections::HashMap<String, u32>>;
+
     /// ActivateConnection method
     fn activate_connection(
         &self,
@@ -54,4 +60,7 @@ trait NetworkManagerSetting {
         &self,
         uuid: &str,
     ) -> zbus::Result<zvariant::OwnedObjectPath>;
+
+    /// ReloadConnections method
+    fn reload_connections(&self) -> zbus::Result<bool>;
 }

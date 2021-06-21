@@ -44,11 +44,17 @@ impl std::fmt::Display for NmError {
 }
 
 impl From<zbus::Error> for NmError {
-    fn from(zbus_err: zbus::Error) -> Self {
+    fn from(e: zbus::Error) -> Self {
         Self {
             kind: ErrorKind::DbusConnectionError,
-            msg: format!("{}", zbus_err),
-            dbus_error: Some(zbus_err),
+            msg: format!("{}", e),
+            dbus_error: Some(e),
         }
+    }
+}
+
+impl From<std::io::Error> for NmError {
+    fn from(e: std::io::Error) -> Self {
+        Self::new(ErrorKind::Bug, format!("Bug failed to write file: {}", e))
     }
 }
