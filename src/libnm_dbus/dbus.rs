@@ -1,7 +1,24 @@
+// Copyright 2021 Red Hat, Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 use std::convert::TryFrom;
 
-use crate::dbus_proxy::{NetworkManagerProxy, NetworkManagerSettingProxy};
-use crate::error::{ErrorKind, NmError};
+use crate::{
+    connection::{NmConnection, NmConnectionDbusOwnedValue},
+    dbus_proxy::{NetworkManagerProxy, NetworkManagerSettingProxy},
+    error::{ErrorKind, NmError},
+};
 
 const NM_CHECKPOINT_CREATE_FLAG_DELETE_NEW_CONNECTIONS: u32 = 0x02;
 const NM_CHECKPOINT_CREATE_FLAG_DISCONNECT_NEW_DEVICES: u32 = 0x04;
@@ -13,6 +30,8 @@ const OBJ_PATH_NULL_STR: &str = "/";
 const NM_DBUS_INTERFACE_ROOT: &str = "org.freedesktop.NetworkManager";
 const NM_DBUS_INTERFACE_AC: &str =
     "org.freedesktop.NetworkManager.Connection.Active";
+const NM_DBUS_INTERFACE_SETTING: &str =
+    "org.freedesktop.NetworkManager.Settings.Connection";
 
 pub(crate) struct NmDbus<'a> {
     connection: zbus::Connection,
@@ -88,9 +107,28 @@ impl<'a> NmDbus<'a> {
         &self,
         uuid: &str,
     ) -> Result<String, NmError> {
-        Ok(obj_path_to_string(
-            self.setting_proxy.get_connection_by_uuid(uuid)?,
-        ))
+        match self.setting_proxy.get_connection_by_uuid(uuid) {
+            Ok(c) => Ok(obj_path_to_string(c)),
+            Err(e) => {
+                if let zbus::Error::MethodError(ref error_type, ..) = e {
+                    if error_type
+                        == &format!(
+                            "{}.Settings.InvalidConnection",
+                            NM_DBUS_INTERFACE_ROOT,
+                        )
+                    {
+                        Err(NmError::new(
+                            ErrorKind::NotFound,
+                            format!("Connection with UUID {} not found", uuid),
+                        ))
+                    } else {
+                        Err(e.into())
+                    }
+                } else {
+                    Err(e.into())
+                }
+            }
+        }
     }
 
     pub(crate) fn activate(&self, nm_conn: &str) -> Result<(), NmError> {
@@ -114,8 +152,12 @@ impl<'a> NmDbus<'a> {
         Ok(self.proxy.deactivate_connection(&str_to_obj_path(nm_ac)?)?)
     }
 
-    pub(crate) fn reload_connections(&self) -> Result<(), NmError> {
-        self.setting_proxy.reload_connections()?;
+    pub(crate) fn add_connection(
+        &self,
+        nm_conn: &NmConnection,
+    ) -> Result<(), NmError> {
+        let value = nm_conn.to_value()?;
+        self.setting_proxy.add_connection(value)?;
         Ok(())
     }
 
@@ -139,6 +181,32 @@ impl<'a> NmDbus<'a> {
                 ),
             )),
         }
+    }
+
+    pub(crate) fn get_nm_connection(
+        &self,
+        con_obj_path: &str,
+    ) -> Result<NmConnectionDbusOwnedValue, NmError> {
+        let proxy = zbus::Proxy::new(
+            &self.connection,
+            NM_DBUS_INTERFACE_ROOT,
+            con_obj_path,
+            NM_DBUS_INTERFACE_SETTING,
+        )?;
+        Ok(proxy.call::<(), NmConnectionDbusOwnedValue>("GetSettings", &())?)
+    }
+
+    pub(crate) fn delete_connection(
+        &self,
+        con_obj_path: &str,
+    ) -> Result<(), NmError> {
+        let proxy = zbus::Proxy::new(
+            &self.connection,
+            NM_DBUS_INTERFACE_ROOT,
+            con_obj_path,
+            NM_DBUS_INTERFACE_SETTING,
+        )?;
+        Ok(proxy.call::<(), ()>("Delete", &())?)
     }
 }
 

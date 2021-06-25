@@ -11,16 +11,14 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+//
 
-mod connection;
-mod dbus;
-mod dbus_proxy;
-mod dbus_value;
-mod error;
-mod nm_api;
+mod bridge;
+mod conn;
 
-pub use crate::connection::{
-    NmConnection, NmSettingBridge, NmSettingConnection,
+pub use crate::connection::bridge::NmSettingBridge;
+pub use crate::connection::conn::{NmConnection, NmSettingConnection};
+
+pub(crate) use crate::connection::conn::{
+    NmConnectionDbusOwnedValue,
 };
-pub use crate::error::{ErrorKind, NmError};
-pub use crate::nm_api::NmApi;
