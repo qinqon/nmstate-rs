@@ -12,10 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use std::collections::HashMap;
 use std::convert::TryFrom;
 
 use crate::{
-    connection::{NmConnection, NmConnectionDbusOwnedValue},
+    connection::{
+        NmConnection, NmConnectionDbusOwnedValue, NmConnectionDbusValue,
+    },
     dbus_proxy::{NetworkManagerProxy, NetworkManagerSettingProxy},
     error::{ErrorKind, NmError},
 };
@@ -32,6 +35,12 @@ const NM_DBUS_INTERFACE_AC: &str =
     "org.freedesktop.NetworkManager.Connection.Active";
 const NM_DBUS_INTERFACE_SETTING: &str =
     "org.freedesktop.NetworkManager.Settings.Connection";
+
+const NM_SETTINGS_CREATE2_FLAGS_TO_DISK: u32 = 1;
+const NM_SETTINGS_CREATE2_FLAGS_BLOCK_AUTOCONNECT: u32 = 32;
+
+const NM_SETTINGS_UPDATE2_FLAGS_TO_DISK: u32 = 1;
+const NM_SETTINGS_UPDATE2_FLAGS_BLOCK_AUTOCONNECT: u32 = 32;
 
 pub(crate) struct NmDbus<'a> {
     connection: zbus::Connection,
@@ -157,7 +166,12 @@ impl<'a> NmDbus<'a> {
         nm_conn: &NmConnection,
     ) -> Result<(), NmError> {
         let value = nm_conn.to_value()?;
-        self.setting_proxy.add_connection(value)?;
+        self.setting_proxy.add_connection2(
+            value,
+            NM_SETTINGS_CREATE2_FLAGS_TO_DISK
+                + NM_SETTINGS_CREATE2_FLAGS_BLOCK_AUTOCONNECT,
+            HashMap::new(),
+        )?;
         Ok(())
     }
 
@@ -207,6 +221,34 @@ impl<'a> NmDbus<'a> {
             NM_DBUS_INTERFACE_SETTING,
         )?;
         Ok(proxy.call::<(), ()>("Delete", &())?)
+    }
+
+    pub(crate) fn update_connection(
+        &self,
+        con_obj_path: &str,
+        nm_conn: &NmConnection,
+    ) -> Result<(), NmError> {
+        let value = nm_conn.to_value()?;
+        let proxy = zbus::Proxy::new(
+            &self.connection,
+            NM_DBUS_INTERFACE_ROOT,
+            con_obj_path,
+            NM_DBUS_INTERFACE_SETTING,
+        )?;
+        proxy.call::<(
+                NmConnectionDbusValue,
+                u32,
+                HashMap<&str, zvariant::Value>,
+            ), HashMap<String, zvariant::OwnedValue>>(
+                "Update2",
+                &(
+                    value,
+                    NM_SETTINGS_UPDATE2_FLAGS_BLOCK_AUTOCONNECT
+                        + NM_SETTINGS_UPDATE2_FLAGS_TO_DISK,
+                    HashMap::new()
+                ),
+            )?;
+        Ok(())
     }
 }
 

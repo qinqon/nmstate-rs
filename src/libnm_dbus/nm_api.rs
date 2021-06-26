@@ -14,7 +14,11 @@
 
 use std::convert::TryFrom;
 
-use crate::{connection::NmConnection, dbus::NmDbus, error::NmError};
+use crate::{
+    connection::{NmConnection, NmSettingConnection},
+    dbus::NmDbus,
+    error::NmError,
+};
 
 pub struct NmApi<'a> {
     dbus: NmDbus<'a>,
@@ -70,6 +74,19 @@ impl<'a> NmApi<'a> {
         &self,
         nm_conn: &NmConnection,
     ) -> Result<(), NmError> {
+        if let &NmConnection {
+            connection:
+                Some(NmSettingConnection {
+                    uuid: Some(ref uuid),
+                    ..
+                }),
+            ..
+        } = nm_conn
+        {
+            if let Ok(con_obj_path) = self.dbus.get_connection_by_uuid(uuid) {
+                return self.dbus.update_connection(&con_obj_path, nm_conn);
+            }
+        };
         self.dbus.add_connection(nm_conn)?;
         Ok(())
     }

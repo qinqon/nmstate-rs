@@ -51,6 +51,22 @@ fn test_full() {
             ..Default::default()
         }),
         bridge: Some(NmSettingBridge {
+            stp: Some(true),
+            ..Default::default()
+        }),
+        ..Default::default()
+    })
+    .unwrap();
+    // Update connection with STP false
+    nm.connection_add(&NmConnection {
+        connection: Some(NmSettingConnection {
+            id: Some("br0".into()),
+            uuid: Some(br_conn_uuid.into()),
+            iface_type: Some("bridge".into()),
+            iface_name: Some("br0".into()),
+            ..Default::default()
+        }),
+        bridge: Some(NmSettingBridge {
             stp: Some(false),
             ..Default::default()
         }),

@@ -95,7 +95,6 @@ impl TryFrom<&HashMap<String, zvariant::OwnedValue>> for NmSettingConnection {
     fn try_from(
         value: &HashMap<String, zvariant::OwnedValue>,
     ) -> Result<Self, Self::Error> {
-        println!("raw connection value: {:?}", value);
         let autoconnect_ports = match value_to_i32(value, "autoconnect-slaves")?
         {
             Some(NM_AUTOCONENCT_PORT_YES) => Some(true),

@@ -75,12 +75,17 @@ trait NetworkManagerSetting {
         uuid: &str,
     ) -> zbus::Result<zvariant::OwnedObjectPath>;
 
-    /// AddConnection method
-    fn add_connection(
+    /// AddConnection2 method
+    fn add_connection2(
         &self,
-        connection: std::collections::HashMap<
+        settings: std::collections::HashMap<
             &str,
             std::collections::HashMap<&str, zvariant::Value>,
         >,
-    ) -> zbus::Result<zvariant::OwnedObjectPath>;
+        flags: u32,
+        args: std::collections::HashMap<&str, zvariant::Value>,
+    ) -> zbus::Result<(
+        zvariant::OwnedObjectPath,
+        std::collections::HashMap<String, zvariant::OwnedValue>,
+    )>;
 }

@@ -28,7 +28,6 @@ impl TryFrom<&HashMap<String, zvariant::OwnedValue>> for NmSettingBridge {
     fn try_from(
         value: &HashMap<String, zvariant::OwnedValue>,
     ) -> Result<Self, Self::Error> {
-        println!("raw bridge value: {:?}", value);
         Ok(Self {
             stp: value_to_bool(value, "stp")?,
         })
@@ -57,7 +56,6 @@ impl TryFrom<&HashMap<String, zvariant::OwnedValue>> for NmSettingBridgePort {
     fn try_from(
         value: &HashMap<String, zvariant::OwnedValue>,
     ) -> Result<Self, Self::Error> {
-        println!("raw bridge port value: {:?}", value);
         Ok(Self {})
     }
 }

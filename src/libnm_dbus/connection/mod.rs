@@ -20,5 +20,5 @@ pub use crate::connection::bridge::NmSettingBridge;
 pub use crate::connection::conn::{NmConnection, NmSettingConnection};
 
 pub(crate) use crate::connection::conn::{
-    NmConnectionDbusOwnedValue,
+    NmConnectionDbusOwnedValue, NmConnectionDbusValue,
 };
