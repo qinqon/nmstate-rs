@@ -16,7 +16,8 @@
 use std::process::{Command, Stdio};
 
 use nm_dbus::{
-    ErrorKind, NmApi, NmConnection, NmSettingBridge, NmSettingConnection,
+    ErrorKind, NmApi, NmConnection, NmError, NmSettingBridge,
+    NmSettingConnection, NmSettingIp, NmSettingIpMethod,
 };
 
 #[test]
@@ -48,35 +49,24 @@ fn test_full() {
             uuid: Some(br_conn_uuid.into()),
             iface_type: Some("bridge".into()),
             iface_name: Some("br0".into()),
+            autoconnect_ports: Some(true),
             ..Default::default()
         }),
         bridge: Some(NmSettingBridge {
             stp: Some(true),
             ..Default::default()
         }),
-        ..Default::default()
-    })
-    .unwrap();
-    // Update connection with STP false
-    nm.connection_add(&NmConnection {
-        connection: Some(NmSettingConnection {
-            id: Some("br0".into()),
-            uuid: Some(br_conn_uuid.into()),
-            iface_type: Some("bridge".into()),
-            iface_name: Some("br0".into()),
+        ipv4: Some(NmSettingIp {
+            method: Some(NmSettingIpMethod::Disabled),
             ..Default::default()
         }),
-        bridge: Some(NmSettingBridge {
-            stp: Some(false),
+        ipv6: Some(NmSettingIp {
+            method: Some(NmSettingIpMethod::Disabled),
             ..Default::default()
         }),
         ..Default::default()
     })
     .unwrap();
-    println!(
-        "Bridge connection created: {:?}",
-        nm.nm_connection_get(br_conn_uuid)
-    );
 
     let port_uuid = &NmApi::uuid_gen();
     nm.connection_add(&NmConnection {
@@ -106,6 +96,38 @@ fn test_full() {
 
     std::thread::sleep(std::time::Duration::from_millis(5000));
 
+    // Update connection with STP false
+    nm.connection_add(&NmConnection {
+        connection: Some(NmSettingConnection {
+            id: Some("br0".into()),
+            uuid: Some(br_conn_uuid.into()),
+            iface_type: Some("bridge".into()),
+            iface_name: Some("br0".into()),
+            ..Default::default()
+        }),
+        bridge: Some(NmSettingBridge {
+            stp: Some(false),
+            ..Default::default()
+        }),
+        ..Default::default()
+    })
+    .unwrap();
+    println!(
+        "Bridge connection created: {:?}",
+        nm.nm_connection_get(br_conn_uuid)
+    );
+    if let Err(NmError {
+        kind: ErrorKind::IncompatibleReapply,
+        ..
+    }) = nm.connection_reapply(br_conn_uuid)
+    {
+        println!("The reapply fail on bridge STP changes as expected");
+        nm.connection_activate(br_conn_uuid).unwrap();
+    } else {
+        panic!("The reapply should fail in bridge STP changes, but did not");
+    }
+
+    std::thread::sleep(std::time::Duration::from_millis(5000));
     println!(
         "{}",
         String::from_utf8(

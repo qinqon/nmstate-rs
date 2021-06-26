@@ -36,6 +36,8 @@ const NM_DBUS_INTERFACE_AC: &str =
 const NM_DBUS_INTERFACE_SETTING: &str =
     "org.freedesktop.NetworkManager.Settings.Connection";
 
+const NM_DBUS_INTERFACE_DEVICE: &str = "org.freedesktop.NetworkManager.Device";
+
 const NM_SETTINGS_CREATE2_FLAGS_TO_DISK: u32 = 1;
 const NM_SETTINGS_CREATE2_FLAGS_BLOCK_AUTOCONNECT: u32 = 32;
 
@@ -255,6 +257,62 @@ impl<'a> NmDbus<'a> {
                 ),
             )?;
         Ok(())
+    }
+
+    pub(crate) fn nm_dev_obj_path_get(
+        &self,
+        iface_name: &str,
+    ) -> Result<String, NmError> {
+        Ok(obj_path_to_string(
+            self.proxy.get_device_by_ip_iface(iface_name)?,
+        ))
+    }
+
+    pub(crate) fn nm_dev_reapply(
+        &self,
+        nm_dev_obj_path: &str,
+        nm_conn: &NmConnection,
+    ) -> Result<(), NmError> {
+        let value = nm_conn.to_value()?;
+        let proxy = zbus::Proxy::new(
+            &self.connection,
+            NM_DBUS_INTERFACE_ROOT,
+            nm_dev_obj_path,
+            NM_DBUS_INTERFACE_DEVICE,
+        )?;
+        match proxy.call::<(NmConnectionDbusValue, u64, u32), ()>(
+            "Reapply",
+            &(
+                value, 0, /* ignore version id */
+                0, /* flag, NM document require always be zero */
+            ),
+        ) {
+            Ok(()) => Ok(()),
+            Err(e) => {
+                if let zbus::Error::MethodError(
+                    ref error_type,
+                    Some(ref err_msg),
+                    ..,
+                ) = e
+                {
+                    if error_type
+                        == &format!(
+                            "{}.Device.IncompatibleConnection",
+                            NM_DBUS_INTERFACE_ROOT
+                        )
+                    {
+                        Err(NmError::new(
+                            ErrorKind::IncompatibleReapply,
+                            err_msg.to_string(),
+                        ))
+                    } else {
+                        Err(e.into())
+                    }
+                } else {
+                    Err(e.into())
+                }
+            }
+        }
     }
 }
 

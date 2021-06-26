@@ -20,7 +20,8 @@ mod error;
 mod nm_api;
 
 pub use crate::connection::{
-    NmConnection, NmSettingBridge, NmSettingConnection,
+    NmConnection, NmSettingBridge, NmSettingConnection, NmSettingIp,
+    NmSettingIpMethod,
 };
 pub use crate::error::{ErrorKind, NmError};
 pub use crate::nm_api::NmApi;

@@ -18,6 +18,7 @@ use std::convert::TryFrom;
 
 use crate::{
     connection::bridge::{NmSettingBridge, NmSettingBridgePort},
+    connection::ip::NmSettingIp,
     dbus_value::{value_to_bool, value_to_i32, value_to_string},
     error::NmError,
 };
@@ -39,6 +40,8 @@ pub struct NmConnection {
     pub connection: Option<NmSettingConnection>,
     pub bridge: Option<NmSettingBridge>,
     pub bridge_port: Option<NmSettingBridgePort>,
+    pub ipv4: Option<NmSettingIp>,
+    pub ipv6: Option<NmSettingIp>,
 }
 
 impl TryFrom<NmConnectionDbusOwnedValue> for NmConnection {
@@ -50,6 +53,12 @@ impl TryFrom<NmConnectionDbusOwnedValue> for NmConnection {
         let mut nm_con: Self = Default::default();
         if let Some(con_value) = value.get("connection") {
             nm_con.connection = Some(NmSettingConnection::try_from(con_value)?);
+        }
+        if let Some(ipv4_set) = value.get("ipv4") {
+            nm_con.ipv4 = Some(NmSettingIp::try_from(ipv4_set)?);
+        }
+        if let Some(ipv6_set) = value.get("ipv6") {
+            nm_con.ipv6 = Some(NmSettingIp::try_from(ipv6_set)?);
         }
         if let Some(br_value) = value.get("bridge") {
             nm_con.bridge = Some(NmSettingBridge::try_from(br_value)?);
@@ -73,6 +82,12 @@ impl NmConnection {
         }
         if let Some(br_port_set) = &self.bridge_port {
             ret.insert("bridge-port", br_port_set.to_value()?);
+        }
+        if let Some(ipv4_set) = &self.ipv4 {
+            ret.insert("ipv4", ipv4_set.to_value()?);
+        }
+        if let Some(ipv6_set) = &self.ipv6 {
+            ret.insert("ipv6", ipv6_set.to_value()?);
         }
         Ok(ret)
     }

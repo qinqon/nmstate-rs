@@ -17,7 +17,7 @@ use std::convert::TryFrom;
 use crate::{
     connection::{NmConnection, NmSettingConnection},
     dbus::NmDbus,
-    error::NmError,
+    error::{ErrorKind, NmError},
 };
 
 pub struct NmApi<'a> {
@@ -92,8 +92,35 @@ impl<'a> NmApi<'a> {
     }
 
     pub fn connection_delete(&self, uuid: &str) -> Result<(), NmError> {
-        let con_obj_path = self.dbus.get_connection_by_uuid(uuid)?;
-        self.dbus.connection_delete(&con_obj_path)
+        if let Ok(con_obj_path) = self.dbus.get_connection_by_uuid(uuid) {
+            self.dbus.connection_delete(&con_obj_path)
+        } else {
+            Ok(())
+        }
+    }
+
+    pub fn connection_reapply(&self, uuid: &str) -> Result<(), NmError> {
+        let nm_conn = self.nm_connection_get(uuid)?;
+        if let &NmConnection {
+            connection:
+                Some(NmSettingConnection {
+                    iface_name: Some(ref iface_name),
+                    ..
+                }),
+            ..
+        } = &nm_conn
+        {
+            let nm_dev_obj_path = self.dbus.nm_dev_obj_path_get(iface_name)?;
+            self.dbus.nm_dev_reapply(&nm_dev_obj_path, &nm_conn)
+        } else {
+            Err(NmError::new(
+                ErrorKind::InvalidArgument,
+                format!(
+                    "Failed to extract interface name from connection {}",
+                    uuid
+                ),
+            ))
+        }
     }
 
     pub fn uuid_gen() -> String {

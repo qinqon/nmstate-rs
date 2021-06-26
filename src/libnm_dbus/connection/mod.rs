@@ -15,9 +15,11 @@
 
 mod bridge;
 mod conn;
+mod ip;
 
 pub use crate::connection::bridge::NmSettingBridge;
 pub use crate::connection::conn::{NmConnection, NmSettingConnection};
+pub use crate::connection::ip::{NmSettingIp, NmSettingIpMethod};
 
 pub(crate) use crate::connection::conn::{
     NmConnectionDbusOwnedValue, NmConnectionDbusValue,

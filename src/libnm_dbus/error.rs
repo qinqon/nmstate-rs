@@ -18,6 +18,7 @@ pub enum ErrorKind {
     CheckpointConflict,
     InvalidArgument,
     NotFound,
+    IncompatibleReapply,
     Bug,
 }
 
