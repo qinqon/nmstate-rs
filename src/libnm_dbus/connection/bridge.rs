@@ -54,7 +54,7 @@ pub struct NmSettingBridgePort {
 impl TryFrom<&HashMap<String, zvariant::OwnedValue>> for NmSettingBridgePort {
     type Error = NmError;
     fn try_from(
-        value: &HashMap<String, zvariant::OwnedValue>,
+        _value: &HashMap<String, zvariant::OwnedValue>,
     ) -> Result<Self, Self::Error> {
         Ok(Self {})
     }

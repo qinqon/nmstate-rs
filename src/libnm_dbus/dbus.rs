@@ -140,7 +140,10 @@ impl<'a> NmDbus<'a> {
         }
     }
 
-    pub(crate) fn activate(&self, nm_conn: &str) -> Result<(), NmError> {
+    pub(crate) fn connection_activate(
+        &self,
+        nm_conn: &str,
+    ) -> Result<(), NmError> {
         self.proxy.activate_connection(
             &str_to_obj_path(nm_conn)?,
             &str_to_obj_path(OBJ_PATH_NULL_STR)?,
@@ -157,11 +160,14 @@ impl<'a> NmDbus<'a> {
         Ok(ret)
     }
 
-    pub(crate) fn deactivate(&self, nm_ac: &str) -> Result<(), NmError> {
+    pub(crate) fn connection_deactivate(
+        &self,
+        nm_ac: &str,
+    ) -> Result<(), NmError> {
         Ok(self.proxy.deactivate_connection(&str_to_obj_path(nm_ac)?)?)
     }
 
-    pub(crate) fn add_connection(
+    pub(crate) fn connection_add(
         &self,
         nm_conn: &NmConnection,
     ) -> Result<(), NmError> {
@@ -175,7 +181,7 @@ impl<'a> NmDbus<'a> {
         Ok(())
     }
 
-    pub(crate) fn get_nm_ac_uuid(
+    pub(crate) fn nm_ac_get_by_uuid(
         &self,
         nm_ac: &str,
     ) -> Result<String, NmError> {
@@ -197,7 +203,7 @@ impl<'a> NmDbus<'a> {
         }
     }
 
-    pub(crate) fn get_nm_connection(
+    pub(crate) fn nm_connection_get(
         &self,
         con_obj_path: &str,
     ) -> Result<NmConnectionDbusOwnedValue, NmError> {
@@ -210,7 +216,7 @@ impl<'a> NmDbus<'a> {
         Ok(proxy.call::<(), NmConnectionDbusOwnedValue>("GetSettings", &())?)
     }
 
-    pub(crate) fn delete_connection(
+    pub(crate) fn connection_delete(
         &self,
         con_obj_path: &str,
     ) -> Result<(), NmError> {
@@ -223,7 +229,7 @@ impl<'a> NmDbus<'a> {
         Ok(proxy.call::<(), ()>("Delete", &())?)
     }
 
-    pub(crate) fn update_connection(
+    pub(crate) fn connection_update(
         &self,
         con_obj_path: &str,
         nm_conn: &NmConnection,

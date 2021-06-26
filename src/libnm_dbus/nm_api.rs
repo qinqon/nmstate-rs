@@ -47,27 +47,27 @@ impl<'a> NmApi<'a> {
         self.dbus.checkpoint_rollback(checkpoint)
     }
 
-    pub fn activate(&self, uuid: &str) -> Result<(), NmError> {
+    pub fn connection_activate(&self, uuid: &str) -> Result<(), NmError> {
         let nm_conn = self.dbus.get_connection_by_uuid(uuid)?;
-        self.dbus.activate(&nm_conn)
+        self.dbus.connection_activate(&nm_conn)
     }
 
-    pub fn deactivate(&self, uuid: &str) -> Result<(), NmError> {
+    pub fn connection_deactivate(&self, uuid: &str) -> Result<(), NmError> {
         let nm_ac = get_active_connection_by_uuid(&self.dbus, uuid)?;
 
         if !nm_ac.is_empty() {
-            self.dbus.deactivate(&nm_ac)
+            self.dbus.connection_deactivate(&nm_ac)
         } else {
             Ok(())
         }
     }
 
-    pub fn get_nm_connection(
+    pub fn nm_connection_get(
         &self,
         uuid: &str,
     ) -> Result<NmConnection, NmError> {
         let con_obj_path = self.dbus.get_connection_by_uuid(uuid)?;
-        NmConnection::try_from(self.dbus.get_nm_connection(&con_obj_path)?)
+        NmConnection::try_from(self.dbus.nm_connection_get(&con_obj_path)?)
     }
 
     pub fn connection_add(
@@ -84,16 +84,16 @@ impl<'a> NmApi<'a> {
         } = nm_conn
         {
             if let Ok(con_obj_path) = self.dbus.get_connection_by_uuid(uuid) {
-                return self.dbus.update_connection(&con_obj_path, nm_conn);
+                return self.dbus.connection_update(&con_obj_path, nm_conn);
             }
         };
-        self.dbus.add_connection(nm_conn)?;
+        self.dbus.connection_add(nm_conn)?;
         Ok(())
     }
 
     pub fn connection_delete(&self, uuid: &str) -> Result<(), NmError> {
         let con_obj_path = self.dbus.get_connection_by_uuid(uuid)?;
-        self.dbus.delete_connection(&con_obj_path)
+        self.dbus.connection_delete(&con_obj_path)
     }
 
     pub fn uuid_gen() -> String {
@@ -109,7 +109,7 @@ fn get_active_connection_by_uuid(
     let nm_acs = dbus.active_connections()?;
 
     for nm_ac in nm_acs {
-        if dbus.get_nm_ac_uuid(&nm_ac)? == uuid {
+        if dbus.nm_ac_get_by_uuid(&nm_ac)? == uuid {
             return Ok(nm_ac);
         }
     }

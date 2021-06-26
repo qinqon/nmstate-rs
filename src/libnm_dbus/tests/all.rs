@@ -75,7 +75,7 @@ fn test_full() {
     .unwrap();
     println!(
         "Bridge connection created: {:?}",
-        nm.get_nm_connection(br_conn_uuid)
+        nm.nm_connection_get(br_conn_uuid)
     );
 
     let port_uuid = &NmApi::uuid_gen();
@@ -98,10 +98,10 @@ fn test_full() {
     .unwrap();
     println!(
         "Bridge port connection created: {:?}",
-        nm.get_nm_connection(port_uuid)
+        nm.nm_connection_get(port_uuid)
     );
 
-    nm.activate(br_conn_uuid).unwrap();
+    nm.connection_activate(br_conn_uuid).unwrap();
     println!("connection {} activated", br_conn_uuid);
 
     std::thread::sleep(std::time::Duration::from_millis(5000));
@@ -122,7 +122,7 @@ fn test_full() {
     );
 
     std::thread::sleep(std::time::Duration::from_millis(100));
-    nm.deactivate(br_conn_uuid).unwrap();
+    nm.connection_deactivate(br_conn_uuid).unwrap();
     println!("connection {} deactivated", br_conn_uuid);
 
     nm.connection_delete(br_conn_uuid).unwrap();
