@@ -70,6 +70,24 @@ impl<'a> NmApi<'a> {
         NmConnection::try_from(self.dbus.nm_connection_get(&con_obj_path)?)
     }
 
+    pub fn nm_applied_connections_get(
+        &self,
+    ) -> Result<Vec<NmConnection>, NmError> {
+        let mut nm_conns = Vec::new();
+        let nm_devs = self.dbus.nm_dev_obj_paths_get()?;
+        for nm_dev in &nm_devs {
+            nm_conns.push(
+                match self.dbus.nm_dev_applied_connection_get(&nm_dev) {
+                    Ok(n) => NmConnection::try_from(n)?,
+                    Err(_) => {
+                        continue;
+                    }
+                },
+            );
+        }
+        Ok(nm_conns)
+    }
+
     pub fn connection_add(
         &self,
         nm_conn: &NmConnection,

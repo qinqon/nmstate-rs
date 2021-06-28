@@ -268,6 +268,36 @@ impl<'a> NmDbus<'a> {
         ))
     }
 
+    pub(crate) fn nm_dev_obj_paths_get(&self) -> Result<Vec<String>, NmError> {
+        Ok(self
+            .proxy
+            .get_all_devices()?
+            .iter()
+            .map(|o| obj_path_to_string(o.clone()))
+            .collect())
+    }
+
+    pub(crate) fn nm_dev_applied_connection_get(
+        &self,
+        nm_dev_obj_path: &str,
+    ) -> Result<NmConnectionDbusOwnedValue, NmError> {
+        let proxy = zbus::Proxy::new(
+            &self.connection,
+            NM_DBUS_INTERFACE_ROOT,
+            nm_dev_obj_path,
+            NM_DBUS_INTERFACE_DEVICE,
+        )?;
+        let (nm_conn, _) = proxy
+            .call::<u32, (NmConnectionDbusOwnedValue, u64)>(
+                "GetAppliedConnection",
+                &(
+                    0
+                    // NM document require it to be zero
+                ),
+            )?;
+        Ok(nm_conn)
+    }
+
     pub(crate) fn nm_dev_reapply(
         &self,
         nm_dev_obj_path: &str,

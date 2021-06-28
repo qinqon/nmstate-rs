@@ -143,6 +143,8 @@ fn test_full() {
         .unwrap()
     );
 
+    println!("NM {:?}", nm.nm_applied_connections_get());
+
     std::thread::sleep(std::time::Duration::from_millis(100));
     nm.connection_deactivate(br_conn_uuid).unwrap();
     println!("connection {} deactivated", br_conn_uuid);

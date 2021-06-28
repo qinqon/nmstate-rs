@@ -67,6 +67,9 @@ trait NetworkManager {
         &self,
         iface: &str,
     ) -> zbus::Result<zvariant::OwnedObjectPath>;
+
+    /// GetAllDevices method
+    fn get_all_devices(&self) -> zbus::Result<Vec<zvariant::OwnedObjectPath>>;
 }
 
 #[dbus_proxy(
