@@ -1,18 +1,14 @@
+mod error;
+
 use clap;
-use nmstate::NetState;
-use serde_yaml;
+use nmstate::NetworkState;
+use serde::Serialize;
+use serde_yaml::{self, Value};
+
+use crate::error::CliError;
 
 const SUB_CMD_GEN_CONF: &str = "gc";
-
-struct CliError {
-    msg: String,
-}
-
-impl std::fmt::Display for CliError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.msg)
-    }
-}
+const SUB_CMD_SHOW: &str = "show";
 
 fn main() {
     let matches = clap::App::new("nmstatectl")
@@ -20,6 +16,10 @@ fn main() {
         .author("Gris Ge <fge@redhat.com>")
         .about("Command line of nmstate")
         .setting(clap::AppSettings::SubcommandRequired)
+        .subcommand(
+            clap::SubCommand::with_name(SUB_CMD_SHOW)
+                .about("Show network state"),
+        )
         .subcommand(
             clap::SubCommand::with_name(SUB_CMD_GEN_CONF)
                 .about("Generate network configuration for specified state")
@@ -35,6 +35,8 @@ fn main() {
         if let Some(file_path) = matches.value_of("STATE_FILE") {
             print_result_and_exit(gen_conf(&file_path));
         }
+    } else if let Some(_) = matches.subcommand_matches(SUB_CMD_SHOW) {
+        print_result_and_exit(show());
     }
 }
 
@@ -44,7 +46,7 @@ fn print_result_and_exit(result: Result<String, CliError>) {
         Ok(s) => {
             println!("{}", s);
             std::process::exit(0);
- n       }
+        }
         Err(e) => {
             eprintln!("{}", e);
             std::process::exit(1);
@@ -53,34 +55,64 @@ fn print_result_and_exit(result: Result<String, CliError>) {
 }
 
 fn gen_conf(file_path: &str) -> Result<String, CliError> {
-    let fd = match std::fs::File::open(file_path) {
-        Ok(fd) => fd,
-        Err(e) => {
-            return Err(CliError {
-                msg: format!("Filed to open file {}: {}", file_path, e),
-            })
+    let fd = std::fs::File::open(file_path)?;
+    let net_state: NetworkState = serde_yaml::from_reader(fd)?;
+    let confs = net_state.gen_conf()?;
+    Ok(serde_yaml::to_string(&confs)?)
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize)]
+struct SortedNetworkState {
+    interfaces: Vec<Value>,
+}
+
+const IFACE_TOP_PRIORTIES: [&str; 2] = ["name", "type"];
+
+fn sort_netstate(
+    net_state: NetworkState,
+) -> Result<SortedNetworkState, CliError> {
+    let mut ifaces = net_state.interfaces.unwrap_or(Vec::new());
+    ifaces.sort_by(|a, b| a.name().cmp(b.name()));
+
+    if let Value::Sequence(ifaces) = serde_yaml::to_value(&ifaces)? {
+        let mut new_ifaces = Vec::new();
+        for iface_v in ifaces {
+            if let Value::Mapping(iface) = iface_v {
+                let mut new_iface = serde_yaml::Mapping::new();
+                for top_property in IFACE_TOP_PRIORTIES {
+                    if let Some(v) =
+                        iface.get(&Value::String(top_property.to_string()))
+                    {
+                        new_iface.insert(
+                            Value::String(top_property.to_string()),
+                            v.clone(),
+                        );
+                    }
+                }
+                for (k, v) in iface.iter() {
+                    if let Value::String(ref name) = k {
+                        if IFACE_TOP_PRIORTIES.contains(&name.as_str()) {
+                            continue;
+                        }
+                    }
+                    new_iface.insert(k.clone(), v.clone());
+                }
+
+                new_ifaces.push(Value::Mapping(new_iface));
+            }
         }
-    };
-    let net_state: NetState = match serde_yaml::from_reader(fd) {
-        Ok(s) => s,
-        Err(e) => {
-            return Err(CliError {
-                msg: format!("Invalid YAML file {}: {}", file_path, e),
-            })
-        }
-    };
-    let confs = match net_state.gen_conf() {
-        Ok(c) => c,
-        Err(e) => {
-            return Err(CliError {
-                msg: format!("Failled to generate configurations: {}", e),
-            });
-        }
-    };
-    match serde_yaml::to_string(&confs) {
-        Ok(s) => Ok(s),
-        Err(e) => Err(CliError {
-            msg: format!("Failed to generate configurations: {}", e),
-        }),
+        return Ok(SortedNetworkState {
+            interfaces: new_ifaces,
+        });
     }
+
+    Ok(SortedNetworkState {
+        interfaces: Vec::new(),
+    })
+}
+
+// Ordering the outputs
+fn show() -> Result<String, CliError> {
+    let sorted_net_state = sort_netstate(NetworkState::retrieve()?)?;
+    Ok(serde_yaml::to_string(&sorted_net_state)?)
 }

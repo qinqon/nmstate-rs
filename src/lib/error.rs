@@ -1,4 +1,4 @@
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub enum ErrorKind {
     InvalidArgument,
     PluginFailure,
@@ -19,27 +19,20 @@ impl std::fmt::Display for NmstateError {
 
 #[derive(Debug)]
 pub struct NmstateError {
-    pub kind: ErrorKind,
-    pub msg: String,
+    kind: ErrorKind,
+    msg: String,
 }
 
 impl NmstateError {
-    pub fn bug(msg: String) -> Self {
-        Self {
-            kind: ErrorKind::Bug,
-            msg: msg,
-        }
+    pub fn new(kind: ErrorKind, msg: String) -> Self {
+        Self { kind, msg }
     }
-    pub fn invalid_argument(msg: String) -> Self {
-        Self {
-            kind: ErrorKind::InvalidArgument,
-            msg: msg,
-        }
+
+    pub fn kind(&self) -> ErrorKind {
+        self.kind
     }
-    pub fn plugin_failure(msg: String) -> Self {
-        Self {
-            kind: ErrorKind::PluginFailure,
-            msg: msg,
-        }
+
+    pub fn msg(&self) -> &str {
+        self.msg.as_str()
     }
 }
