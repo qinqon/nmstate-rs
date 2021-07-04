@@ -22,6 +22,12 @@ pub enum ErrorKind {
     Bug,
 }
 
+impl std::fmt::Display for ErrorKind {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:?}", self)
+    }
+}
+
 #[derive(Debug)]
 pub struct NmError {
     pub kind: ErrorKind,

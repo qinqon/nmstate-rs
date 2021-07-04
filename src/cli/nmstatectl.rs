@@ -1,7 +1,7 @@
 mod error;
 
 use clap;
-use nmstate::NetworkState;
+use nmstate::{Interfaces, NetworkState};
 use serde::Serialize;
 use serde_yaml::{self, Value};
 
@@ -71,7 +71,7 @@ const IFACE_TOP_PRIORTIES: [&str; 2] = ["name", "type"];
 fn sort_netstate(
     net_state: NetworkState,
 ) -> Result<SortedNetworkState, CliError> {
-    let mut ifaces = net_state.interfaces.unwrap_or(Vec::new());
+    let mut ifaces = net_state.interfaces.unwrap_or(Interfaces::new()).to_vec();
     ifaces.sort_by(|a, b| a.name().cmp(b.name()));
 
     if let Value::Sequence(ifaces) = serde_yaml::to_value(&ifaces)? {

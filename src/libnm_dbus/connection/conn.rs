@@ -72,6 +72,30 @@ impl TryFrom<NmConnectionDbusOwnedValue> for NmConnection {
 }
 
 impl NmConnection {
+    pub fn iface_name(&self) -> Option<&str> {
+        if let Some(NmSettingConnection {
+            iface_name: Some(iface_name),
+            ..
+        }) = &self.connection
+        {
+            Some(iface_name.as_str())
+        } else {
+            None
+        }
+    }
+
+    pub fn iface_type(&self) -> Option<&str> {
+        if let Some(NmSettingConnection {
+            iface_type: Some(iface_type),
+            ..
+        }) = &self.connection
+        {
+            Some(iface_type.as_str())
+        } else {
+            None
+        }
+    }
+
     pub(crate) fn to_value(&self) -> Result<NmConnectionDbusValue, NmError> {
         let mut ret = HashMap::new();
         if let Some(con_set) = &self.connection {

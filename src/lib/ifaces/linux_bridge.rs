@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::{BaseInterface, InterfaceType};
+use crate::{BaseInterface, Interface, InterfaceType};
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct LinuxBridgeInterface {
@@ -54,5 +54,21 @@ impl Default for LinuxBridgeInterface {
             },
             bridge: None,
         }
+    }
+}
+
+impl LinuxBridgeInterface {
+    pub(crate) fn update(&mut self, other: &Interface) {
+        match other {
+            Interface::LinuxBridge(other_iface) => {
+                self.update_full(other_iface)
+            }
+            Interface::Unknown(base_iface) => self.base.update_full(base_iface),
+        }
+    }
+
+    fn update_full(&mut self, other_iface: &LinuxBridgeInterface) {
+        // TODO: this should be done by Trait
+        self.base.update_full(&other_iface.base);
     }
 }

@@ -2,11 +2,14 @@ use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize};
 
-use crate::{error::NmstateError, iface::Interface, nispor::nispor_retrieve};
+use crate::{
+    nispor::nispor_retrieve, nm::nm_retrieve, Interface, Interfaces,
+    NmstateError,
+};
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, Default)]
 pub struct NetworkState {
-    pub interfaces: Option<Vec<Interface>>,
+    pub interfaces: Option<Interfaces>,
 }
 
 impl NetworkState {
@@ -18,7 +21,9 @@ impl NetworkState {
         if let Some(ref mut ifaces) = self.interfaces {
             ifaces.push(iface);
         } else {
-            self.interfaces = Some(vec![iface]);
+            let mut interfaces = Interfaces::new();
+            interfaces.push(iface);
+            self.interfaces = Some(interfaces);
         }
     }
 
@@ -30,9 +35,10 @@ impl NetworkState {
     }
 
     pub fn retrieve() -> Result<Self, NmstateError> {
-        let state = nispor_retrieve()?;
-        //let nm_state = nm_retrieve()?;
-        //state.merge(&nm_state);
+        let mut state = nispor_retrieve()?;
+        let nm_state = nm_retrieve()?;
+        // TODO: Priority handling
+        state.update_state(&nm_state)?;
         Ok(state)
     }
 
@@ -40,9 +46,15 @@ impl NetworkState {
         todo!()
     }
 
-    // Merged data from other which hold priority over self
-    fn merge(&mut self, other: &Self) {
-        println!("{:?}, {:?}", self, other);
+    fn update_state(&mut self, other: &Self) -> Result<(), NmstateError> {
+        if let Some(ref mut self_ifaces) = self.interfaces {
+            if let Some(other_ifaces) = &other.interfaces {
+                self_ifaces.update(other_ifaces)?;
+            }
+        } else {
+            self.interfaces = other.interfaces.clone();
+        }
+        Ok(())
     }
 
     pub fn gen_conf(
