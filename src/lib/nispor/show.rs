@@ -1,8 +1,11 @@
 use nispor::NisporError;
 
 use crate::{
-    nispor::linux_bridge::np_bridge_to_nmstate, BaseInterface, ErrorKind,
-    Interface, InterfaceState, InterfaceType, NetworkState, NmstateError,
+    nispor::{
+        ethernet::np_ethernet_to_nmstate, linux_bridge::np_bridge_to_nmstate,
+    },
+    BaseInterface, ErrorKind, Interface, InterfaceState, InterfaceType,
+    NetworkState, NmstateError,
 };
 
 pub(crate) fn nispor_retrieve() -> Result<NetworkState, NmstateError> {
@@ -19,6 +22,9 @@ pub(crate) fn nispor_retrieve() -> Result<NetworkState, NmstateError> {
         let iface = match &base_iface.iface_type {
             InterfaceType::LinuxBridge => Interface::LinuxBridge(
                 np_bridge_to_nmstate(np_iface, base_iface),
+            ),
+            InterfaceType::Ethernet => Interface::Ethernet(
+                np_ethernet_to_nmstate(np_iface, base_iface),
             ),
             _ => Interface::Unknown(base_iface),
         };

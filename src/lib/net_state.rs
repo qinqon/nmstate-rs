@@ -3,8 +3,12 @@ use std::collections::HashMap;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    nispor::nispor_retrieve, nm::nm_retrieve, Interface, Interfaces,
-    NmstateError,
+    nispor::nispor_retrieve,
+    nm::{
+        nm_apply, nm_checkpoint_create, nm_checkpoint_destroy,
+        nm_checkpoint_rollback, nm_retrieve,
+    },
+    Interface, Interfaces, NmstateError,
 };
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, Default)]
@@ -43,7 +47,10 @@ impl NetworkState {
     }
 
     pub fn apply(&self) -> Result<(), NmstateError> {
-        todo!()
+        // TODO: Verify
+        with_nm_checkpoint(
+            || nm_apply(self)
+        )
     }
 
     fn update_state(&mut self, other: &Self) -> Result<(), NmstateError> {
@@ -61,5 +68,21 @@ impl NetworkState {
         &self,
     ) -> Result<HashMap<String, Vec<String>>, NmstateError> {
         todo!()
+    }
+}
+
+fn with_nm_checkpoint<T>(func: T) -> Result<(), NmstateError>
+where
+    T: FnOnce() -> Result<(), NmstateError>,
+{
+    let checkpoint = nm_checkpoint_create()?;
+    match func() {
+        Ok(()) => nm_checkpoint_destroy(&checkpoint),
+        Err(e) => {
+            if let Err(e) = nm_checkpoint_rollback(&checkpoint) {
+                eprintln!("nm_checkpoint_rollback() failed: {}", e);
+            }
+            Err(e)
+        }
     }
 }

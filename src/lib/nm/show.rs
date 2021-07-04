@@ -1,8 +1,9 @@
 use nm_dbus::{NmApi, NmConnection, NmError, NmSettingIp, NmSettingIpMethod};
 
 use crate::{
-    BaseInterface, ErrorKind, Interface, InterfaceIp, InterfaceState,
-    InterfaceType, LinuxBridgeInterface, NetworkState, NmstateError,
+    nm::error::nm_error_to_nmstate, BaseInterface, ErrorKind, Interface,
+    InterfaceIp, InterfaceState, InterfaceType, LinuxBridgeInterface,
+    NetworkState, NmstateError,
 };
 
 const NM_SETTING_BRIDGE_SETTING_NAME: &str = "bridge";
@@ -30,13 +31,6 @@ pub(crate) fn nm_retrieve() -> Result<NetworkState, NmstateError> {
         }
     }
     Ok(net_state)
-}
-
-fn nm_error_to_nmstate(nm_error: &NmError) -> NmstateError {
-    NmstateError::new(
-        ErrorKind::Bug,
-        format!("{}: {}", nm_error.kind, nm_error.msg),
-    )
 }
 
 fn nm_iface_type_to_nmstate(nm_iface_type: &str) -> InterfaceType {

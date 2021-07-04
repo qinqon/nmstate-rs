@@ -58,17 +58,22 @@ impl Default for LinuxBridgeInterface {
 }
 
 impl LinuxBridgeInterface {
-    pub(crate) fn update(&mut self, other: &Interface) {
-        match other {
-            Interface::LinuxBridge(other_iface) => {
-                self.update_full(other_iface)
-            }
-            Interface::Unknown(base_iface) => self.base.update_full(base_iface),
-        }
+    pub(crate) fn update(&mut self, other_iface: &LinuxBridgeInterface) {
+        // TODO: this should be done by Trait
+        self.base.update(&other_iface.base);
     }
 
-    fn update_full(&mut self, other_iface: &LinuxBridgeInterface) {
-        // TODO: this should be done by Trait
-        self.base.update_full(&other_iface.base);
+    pub(crate) fn ports(&self) -> Vec<String> {
+        let mut ret = Vec::new();
+        if let Some(LinuxBridgeConfig {
+            port: Some(port_configs),
+            ..
+        }) = &self.bridge
+        {
+            for port_config in port_configs {
+                ret.push(port_config.name.clone())
+            }
+        }
+        ret
     }
 }

@@ -5,29 +5,21 @@ use crate::{Interface, InterfaceIp, InterfaceState, InterfaceType};
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
 pub struct BaseInterface {
     pub name: String,
-    #[serde(skip_serializing)] // Done by enum tag
+    #[serde(skip_serializing, skip_deserializing)] // Done by enum tag
     pub iface_type: InterfaceType,
     pub state: InterfaceState,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub ipv4: Option<InterfaceIp>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub ipv6: Option<InterfaceIp>,
+    #[serde(skip_serializing, skip_deserializing)]
+    pub controller: Option<String>,
+    #[serde(skip_serializing, skip_deserializing)]
+    pub controller_type: Option<InterfaceType>,
 }
 
 impl BaseInterface {
-    pub(crate) fn update(&mut self, other: &Interface) {
-        match other {
-            Interface::Unknown(base_iface) => self.update_full(base_iface),
-            _ => {
-                println!(
-                    "BUG: BaseInterface::update() got unexpect other {:?}",
-                    other
-                )
-            }
-        }
-    }
-
-    pub(crate) fn update_full(&mut self, other: &BaseInterface) {
+    pub(crate) fn update(&mut self, other: &BaseInterface) {
         self.name = other.name.clone();
         if other.iface_type != InterfaceType::Unknown {
             self.iface_type = other.iface_type.clone();

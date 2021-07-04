@@ -9,6 +9,7 @@ use crate::error::CliError;
 
 const SUB_CMD_GEN_CONF: &str = "gc";
 const SUB_CMD_SHOW: &str = "show";
+const SUB_CMD_APPLY: &str = "apply";
 
 fn main() {
     let matches = clap::App::new("nmstatectl")
@@ -19,6 +20,16 @@ fn main() {
         .subcommand(
             clap::SubCommand::with_name(SUB_CMD_SHOW)
                 .about("Show network state"),
+        )
+        .subcommand(
+            clap::SubCommand::with_name(SUB_CMD_APPLY)
+                .about("Apply network state")
+                .arg(
+                    clap::Arg::with_name("STATE_FILE")
+                        .required(true)
+                        .index(1)
+                        .help("Network state file"),
+                ),
         )
         .subcommand(
             clap::SubCommand::with_name(SUB_CMD_GEN_CONF)
@@ -37,6 +48,10 @@ fn main() {
         }
     } else if let Some(_) = matches.subcommand_matches(SUB_CMD_SHOW) {
         print_result_and_exit(show());
+    } else if let Some(matches) = matches.subcommand_matches(SUB_CMD_APPLY) {
+        if let Some(file_path) = matches.value_of("STATE_FILE") {
+            print_result_and_exit(apply(&file_path));
+        }
     }
 }
 
@@ -114,5 +129,14 @@ fn sort_netstate(
 // Ordering the outputs
 fn show() -> Result<String, CliError> {
     let sorted_net_state = sort_netstate(NetworkState::retrieve()?)?;
+    Ok(serde_yaml::to_string(&sorted_net_state)?)
+}
+
+fn apply(file_path: &str) -> Result<String, CliError> {
+    let fd = std::fs::File::open(file_path)?;
+    let net_state: NetworkState = serde_yaml::from_reader(fd)?;
+    eprintln!("HAHA {:?}", net_state);
+    net_state.apply()?;
+    let sorted_net_state = sort_netstate(net_state)?;
     Ok(serde_yaml::to_string(&sorted_net_state)?)
 }

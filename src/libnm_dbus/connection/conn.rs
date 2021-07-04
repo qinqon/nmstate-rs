@@ -49,7 +49,7 @@ impl TryFrom<NmConnectionDbusOwnedValue> for NmConnection {
     fn try_from(
         value: NmConnectionDbusOwnedValue,
     ) -> Result<Self, Self::Error> {
-        println!("connection keys: {:?}", value.keys());
+        eprintln!("connection keys: {:?}", value.keys());
         let mut nm_con: Self = Default::default();
         if let Some(con_value) = value.get("connection") {
             nm_con.connection = Some(NmSettingConnection::try_from(con_value)?);
