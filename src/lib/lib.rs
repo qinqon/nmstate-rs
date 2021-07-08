@@ -5,6 +5,7 @@ mod ip;
 mod net_state;
 mod nispor;
 mod nm;
+mod state;
 
 pub use crate::error::{ErrorKind, NmstateError};
 pub use crate::iface::{Interface, InterfaceState, InterfaceType};

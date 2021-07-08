@@ -46,7 +46,8 @@ fn np_iface_type_to_nmstate(
         nispor::IfaceType::MacVtap => InterfaceType::MacVtap,
         nispor::IfaceType::OpenvSwitch => InterfaceType::OvsInterface,
         nispor::IfaceType::Tun => InterfaceType::Tun,
-        nispor::IfaceType::Veth => InterfaceType::Veth,
+        // Do not differentiate veth over ethernet
+        nispor::IfaceType::Veth => InterfaceType::Ethernet,
         nispor::IfaceType::Vlan => InterfaceType::Vlan,
         nispor::IfaceType::Vrf => InterfaceType::Vrf,
         nispor::IfaceType::Vxlan => InterfaceType::Vxlan,

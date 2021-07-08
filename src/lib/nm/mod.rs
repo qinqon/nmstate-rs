@@ -1,9 +1,9 @@
-mod show;
+mod apply;
 mod checkpoint;
 mod error;
-mod apply;
+mod show;
 
 pub(crate) use show::*;
-pub(crate) use error::*;
-pub(crate) use checkpoint::*;
+//pub(crate) use error::*;
 pub(crate) use apply::*;
+pub(crate) use checkpoint::*;

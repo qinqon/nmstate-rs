@@ -70,6 +70,13 @@ trait NetworkManager {
 
     /// GetAllDevices method
     fn get_all_devices(&self) -> zbus::Result<Vec<zvariant::OwnedObjectPath>>;
+
+    /// CheckpointAdjustRollbackTimeout method
+    fn checkpoint_adjust_rollback_timeout(
+        &self,
+        checkpoint: &zvariant::ObjectPath,
+        add_timeout: u32,
+    ) -> zbus::Result<()>;
 }
 
 #[dbus_proxy(
@@ -97,4 +104,7 @@ trait NetworkManagerSetting {
         zvariant::OwnedObjectPath,
         std::collections::HashMap<String, zvariant::OwnedValue>,
     )>;
+
+    /// ListConnections method
+    fn list_connections(&self) -> zbus::Result<Vec<zvariant::OwnedObjectPath>>;
 }

@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::{Interface, InterfaceIp, InterfaceState, InterfaceType};
+use crate::{InterfaceIp, InterfaceState, InterfaceType};
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
 pub struct BaseInterface {

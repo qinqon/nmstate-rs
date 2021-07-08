@@ -1,9 +1,9 @@
-use nm_dbus::{NmApi, NmConnection, NmError, NmSettingIp, NmSettingIpMethod};
+use nm_dbus::{NmApi, NmConnection, NmSettingIp, NmSettingIpMethod};
 
 use crate::{
-    nm::error::nm_error_to_nmstate, BaseInterface, ErrorKind, Interface,
-    InterfaceIp, InterfaceState, InterfaceType, LinuxBridgeInterface,
-    NetworkState, NmstateError,
+    nm::error::nm_error_to_nmstate, BaseInterface, EthernetInterface,
+    Interface, InterfaceIp, InterfaceState, InterfaceType,
+    LinuxBridgeInterface, NetworkState, NmstateError,
 };
 
 const NM_SETTING_BRIDGE_SETTING_NAME: &str = "bridge";
@@ -21,6 +21,12 @@ pub(crate) fn nm_retrieve() -> Result<NetworkState, NmstateError> {
             let iface = match &base_iface.iface_type {
                 InterfaceType::LinuxBridge => {
                     Interface::LinuxBridge(LinuxBridgeInterface {
+                        base: base_iface,
+                        ..Default::default()
+                    })
+                }
+                InterfaceType::Ethernet => {
+                    Interface::Ethernet(EthernetInterface {
                         base: base_iface,
                         ..Default::default()
                     })

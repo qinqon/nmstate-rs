@@ -29,3 +29,14 @@ pub(crate) fn nm_checkpoint_destroy(
         .checkpoint_destroy(checkpoint)
         .map_err(|ref nm_error| nm_error_to_nmstate(nm_error))
 }
+
+pub(crate) fn nm_checkpoint_timeout_extend(
+    checkpoint: &str,
+    added_time_sec: u32,
+) -> Result<(), NmstateError> {
+    let nm_api = NmApi::new()
+        .or_else(|ref nm_error| Err(nm_error_to_nmstate(nm_error)))?;
+    nm_api
+        .checkpoint_timeout_extend(checkpoint, added_time_sec)
+        .map_err(|ref nm_error| nm_error_to_nmstate(nm_error))
+}

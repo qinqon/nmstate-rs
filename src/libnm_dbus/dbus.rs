@@ -183,14 +183,14 @@ impl<'a> NmDbus<'a> {
         Ok(())
     }
 
-    pub(crate) fn nm_ac_get_by_uuid(
+    pub(crate) fn nm_ac_obj_path_uuid_get(
         &self,
-        nm_ac: &str,
+        nm_ac_obj_path: &str,
     ) -> Result<String, NmError> {
         let proxy = zbus::Proxy::new(
             &self.connection,
             NM_DBUS_INTERFACE_ROOT,
-            nm_ac,
+            nm_ac_obj_path,
             NM_DBUS_INTERFACE_AC,
         )?;
         match proxy.get_property::<String>("Uuid") {
@@ -199,7 +199,7 @@ impl<'a> NmDbus<'a> {
                 ErrorKind::Bug,
                 format!(
                     "Failed to retrieve UUID of active connection {}: {}",
-                    nm_ac, e
+                    nm_ac_obj_path, e
                 ),
             )),
         }
@@ -343,6 +343,26 @@ impl<'a> NmDbus<'a> {
                 }
             }
         }
+    }
+
+    pub(crate) fn nm_conn_obj_paths_get(&self) -> Result<Vec<String>, NmError> {
+        Ok(self
+            .setting_proxy
+            .list_connections()?
+            .iter()
+            .map(|o| obj_path_to_string(o.clone()))
+            .collect())
+    }
+
+    pub(crate) fn checkpoint_timeout_extend(
+        &self,
+        checkpoint: &str,
+        added_time_sec: u32,
+    ) -> Result<(), NmError> {
+        Ok(self.proxy.checkpoint_adjust_rollback_timeout(
+            &str_to_obj_path(checkpoint)?,
+            added_time_sec,
+        )?)
     }
 }
 

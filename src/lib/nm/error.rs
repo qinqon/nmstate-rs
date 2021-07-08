@@ -1,9 +1,6 @@
-use nm_dbus::{NmApi, NmConnection, NmError, NmSettingIp, NmSettingIpMethod};
+use nm_dbus::NmError;
 
-use crate::{
-    BaseInterface, ErrorKind, Interface, InterfaceIp, InterfaceState,
-    InterfaceType, LinuxBridgeInterface, NetworkState, NmstateError,
-};
+use crate::{ErrorKind, NmstateError};
 
 pub(crate) fn nm_error_to_nmstate(nm_error: &NmError) -> NmstateError {
     NmstateError::new(

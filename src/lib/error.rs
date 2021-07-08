@@ -3,6 +3,7 @@ pub enum ErrorKind {
     InvalidArgument,
     PluginFailure,
     Bug,
+    VerificationError,
 }
 
 impl std::fmt::Display for ErrorKind {
@@ -34,5 +35,11 @@ impl NmstateError {
 
     pub fn msg(&self) -> &str {
         self.msg.as_str()
+    }
+}
+
+impl From<serde_json::Error> for NmstateError {
+    fn from(e: serde_json::Error) -> Self {
+        NmstateError::new(ErrorKind::Bug, format!("serde_json::Error: {}", e))
     }
 }

@@ -49,7 +49,7 @@ impl TryFrom<NmConnectionDbusOwnedValue> for NmConnection {
     fn try_from(
         value: NmConnectionDbusOwnedValue,
     ) -> Result<Self, Self::Error> {
-        eprintln!("connection keys: {:?}", value.keys());
+        //eprintln!("connection keys: {:?}", value.keys());
         let mut nm_con: Self = Default::default();
         if let Some(con_value) = value.get("connection") {
             nm_con.connection = Some(NmSettingConnection::try_from(con_value)?);
@@ -114,6 +114,15 @@ impl NmConnection {
             ret.insert("ipv6", ipv6_set.to_value()?);
         }
         Ok(ret)
+    }
+
+    pub fn uuid(&self) -> Option<&str> {
+        if let Some(nm_conn_set) = &self.connection {
+            if let Some(ref uuid) = nm_conn_set.uuid {
+                return Some(uuid);
+            }
+        }
+        None
     }
 }
 

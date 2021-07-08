@@ -1,11 +1,11 @@
-use serde::{Deserialize, Deserializer, Serialize};
+use serde::{Deserialize, Serialize};
 
 use crate::{
-    ifaces::{BaseInterface, EthernetInterface, LinuxBridgeInterface},
-    ErrorKind, NmstateError,
+    state::get_json_value_difference, BaseInterface, ErrorKind,
+    EthernetInterface, LinuxBridgeInterface, NmstateError,
 };
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum InterfaceType {
     Bond,
@@ -155,6 +155,23 @@ impl Interface {
             iface.ports()
         } else {
             Vec::new()
+        }
+    }
+
+    pub(crate) fn verify(&self, current: &Self) -> Result<(), NmstateError> {
+        let self_value = serde_json::to_value(self)?;
+        let current_value = serde_json::to_value(current)?;
+        if let Some(diff_value) = get_json_value_difference(
+            format!("{}.interface", self.name()),
+            &self_value,
+            &current_value,
+        ) {
+            Err(NmstateError::new(
+                ErrorKind::VerificationError,
+                format!("Verification failure: {}", diff_value.to_string()),
+            ))
+        } else {
+            Ok(())
         }
     }
 }

@@ -8,14 +8,17 @@ pub use linux_bridge::*;
 
 ///////////////////////////////////////////////////////////////////////
 
-use serde::{Deserialize, Deserializer, Serialize};
+use std::collections::HashMap;
+
+use serde::{
+    ser::SerializeSeq, Deserialize, Deserializer, Serialize, Serializer,
+};
 
 use crate::{ErrorKind, Interface, InterfaceType, NmstateError};
 
-#[derive(Clone, Debug, PartialEq, Serialize, Default)]
+#[derive(Clone, Debug, Default)]
 pub struct Interfaces {
-    #[serde(flatten)]
-    ifaces: Vec<Interface>,
+    data: HashMap<(String, InterfaceType), Interface>,
 }
 
 impl<'de> Deserialize<'de> for Interfaces {
@@ -23,12 +26,30 @@ impl<'de> Deserialize<'de> for Interfaces {
     where
         D: Deserializer<'de>,
     {
+        let mut ret = Self::new();
         let mut ifaces =
             <Vec<Interface> as Deserialize>::deserialize(deserializer)?;
         for iface in &mut ifaces {
-            iface.tidy_up()
+            iface.tidy_up();
         }
-        Ok(Interfaces { ifaces })
+        for iface in ifaces {
+            ret.push(iface)
+        }
+        Ok(ret)
+    }
+}
+
+impl Serialize for Interfaces {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let ifaces = self.to_vec();
+        let mut seq = serializer.serialize_seq(Some(ifaces.len()))?;
+        for iface in ifaces {
+            seq.serialize_element(iface)?;
+        }
+        seq.end()
     }
 }
 
@@ -37,21 +58,31 @@ impl Interfaces {
         Self::default()
     }
 
-    pub fn as_slice(&self) -> &[Interface] {
-        self.ifaces.as_slice()
+    pub fn to_vec(&self) -> Vec<&Interface> {
+        let mut ifaces = Vec::new();
+        for iface in self.data.values() {
+            ifaces.push(iface);
+        }
+        ifaces
     }
 
-    pub fn to_vec(&self) -> Vec<Interface> {
-        self.ifaces.clone()
+    fn to_vec_mut(&mut self) -> Vec<&mut Interface> {
+        let mut ifaces = Vec::new();
+        for iface in self.data.values_mut() {
+            ifaces.push(iface);
+        }
+        ifaces
     }
 
     pub fn push(&mut self, iface: Interface) {
-        self.ifaces.push(iface);
+        self.data
+            .insert((iface.name().to_string(), iface.iface_type()), iface);
     }
 
     pub fn update(&mut self, other: &Self) -> Result<(), NmstateError> {
         let mut new_ifaces: Vec<&Interface> = Vec::new();
-        for other_iface in &other.ifaces {
+        let other_ifaces = other.to_vec();
+        for other_iface in &other_ifaces {
             match self
                 .get_iface_mut(other_iface.name(), other_iface.iface_type())?
             {
@@ -77,29 +108,72 @@ impl Interfaces {
         iface_name: &str,
         iface_type: InterfaceType,
     ) -> Result<Option<&mut Interface>, NmstateError> {
-        let mut found_ifaces: Vec<&mut Interface> = Vec::new();
-        for self_iface in self.ifaces.as_mut_slice() {
-            if self_iface.name() == iface_name
-                && (iface_type == InterfaceType::Unknown
-                    || iface_type == self_iface.iface_type())
-            {
-                found_ifaces.push(self_iface);
+        if iface_type != InterfaceType::Unknown {
+            Ok(self.data.get_mut(&(iface_name.to_string(), iface_type)))
+        } else {
+            // Ensure only one found
+            let mut found_ifaces: Vec<&mut Interface> = Vec::new();
+            for iface in self.to_vec_mut() {
+                if iface.name() == iface_name {
+                    found_ifaces.push(iface);
+                }
+            }
+            if found_ifaces.len() > 1 {
+                Err(NmstateError::new(
+                    ErrorKind::InvalidArgument,
+                    format!(
+                        "Cannot match unknown type interfae {} against \
+                        multiple interfaces holding the same name",
+                        iface_name
+                    ),
+                ))
+            } else if found_ifaces.len() == 1 {
+                Ok(Some(found_ifaces.remove(0)))
+            } else {
+                Ok(None)
             }
         }
+    }
 
-        if found_ifaces.len() > 1 {
+    fn get_iface(
+        &self,
+        iface_name: &str,
+        iface_type: InterfaceType,
+    ) -> Result<Option<&Interface>, NmstateError> {
+        if iface_type != InterfaceType::Unknown {
+            Ok(self.data.get(&(iface_name.to_string(), iface_type)))
+        } else {
             Err(NmstateError::new(
-                ErrorKind::InvalidArgument,
+                ErrorKind::Bug,
                 format!(
-                    "Cannot match unknown type interfae {} against \
-                    multiple interfaces holding the same name",
+                    "The Interfaces.get_iface() got unknown interface \
+                    type for {}",
                     iface_name
                 ),
             ))
-        } else if found_ifaces.len() == 1 {
-            Ok(Some(found_ifaces.remove(0)))
-        } else {
-            Ok(None)
         }
+    }
+
+    pub(crate) fn verify(
+        &self,
+        current_ifaces: &Self,
+    ) -> Result<(), NmstateError> {
+        for iface in self.to_vec() {
+            if let Some(cur_iface) =
+                current_ifaces.get_iface(iface.name(), iface.iface_type())?
+            {
+                iface.verify(cur_iface)?;
+            } else {
+                return Err(NmstateError::new(
+                    ErrorKind::VerificationError,
+                    format!(
+                        "Failed to find desired interface {} {:?}",
+                        iface.name(),
+                        iface.iface_type()
+                    ),
+                ));
+            }
+        }
+        Ok(())
     }
 }

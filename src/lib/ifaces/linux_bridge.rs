@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::{BaseInterface, Interface, InterfaceType};
+use crate::{BaseInterface, InterfaceType};
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct LinuxBridgeInterface {

@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+mod active_connection;
 mod connection;
 mod dbus;
 mod dbus_proxy;
@@ -19,6 +20,7 @@ mod dbus_value;
 mod error;
 mod nm_api;
 
+pub use crate::active_connection::NmActiveConnection;
 pub use crate::connection::{
     NmConnection, NmSettingBridge, NmSettingConnection, NmSettingIp,
     NmSettingIpMethod,

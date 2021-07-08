@@ -15,6 +15,7 @@
 use std::convert::TryFrom;
 
 use crate::{
+    active_connection::NmActiveConnection,
     connection::{NmConnection, NmSettingConnection},
     dbus::NmDbus,
     error::{ErrorKind, NmError},
@@ -23,6 +24,9 @@ use crate::{
 pub struct NmApi<'a> {
     dbus: NmDbus<'a>,
 }
+
+const RETRY_INTERVAL_MILLISECOND: u64 = 500;
+const RETRY_COUNT: usize = 60;
 
 impl<'a> NmApi<'a> {
     pub fn new() -> Result<Self, NmError> {
@@ -48,12 +52,15 @@ impl<'a> NmApi<'a> {
     }
 
     pub fn connection_activate(&self, uuid: &str) -> Result<(), NmError> {
-        let nm_conn = self.dbus.get_connection_by_uuid(uuid)?;
-        self.dbus.connection_activate(&nm_conn)
+        // Race: Connection might just created
+        with_retry(RETRY_INTERVAL_MILLISECOND, RETRY_COUNT, || {
+            let nm_conn = self.dbus.get_connection_by_uuid(uuid)?;
+            self.dbus.connection_activate(&nm_conn)
+        })
     }
 
     pub fn connection_deactivate(&self, uuid: &str) -> Result<(), NmError> {
-        let nm_ac = get_active_connection_by_uuid(&self.dbus, uuid)?;
+        let nm_ac = get_nm_ac_obj_path_by_uuid(&self.dbus, uuid)?;
 
         if !nm_ac.is_empty() {
             self.dbus.connection_deactivate(&nm_ac)
@@ -68,6 +75,16 @@ impl<'a> NmApi<'a> {
     ) -> Result<NmConnection, NmError> {
         let con_obj_path = self.dbus.get_connection_by_uuid(uuid)?;
         NmConnection::try_from(self.dbus.nm_connection_get(&con_obj_path)?)
+    }
+
+    pub fn nm_connections_get(&self) -> Result<Vec<NmConnection>, NmError> {
+        let mut nm_conns = Vec::new();
+        for nm_conn_obj_path in self.dbus.nm_conn_obj_paths_get()? {
+            nm_conns.push(NmConnection::try_from(
+                self.dbus.nm_connection_get(&nm_conn_obj_path)?,
+            )?);
+        }
+        Ok(nm_conns)
     }
 
     pub fn nm_applied_connections_get(
@@ -145,18 +162,65 @@ impl<'a> NmApi<'a> {
         // Use Linux random number generator (RNG) to generate UUID
         uuid::Uuid::new_v4().to_hyphenated().to_string()
     }
+
+    pub fn nm_active_connections_get(
+        &self,
+    ) -> Result<Vec<NmActiveConnection>, NmError> {
+        let mut nm_acs = Vec::new();
+        let nm_ac_obj_paths = self.dbus.active_connections()?;
+        for nm_ac_obj_path in nm_ac_obj_paths {
+            nm_acs.push(NmActiveConnection {
+                uuid: self.dbus.nm_ac_obj_path_uuid_get(&nm_ac_obj_path)?,
+                ..Default::default()
+            });
+        }
+        Ok(nm_acs)
+    }
+
+    pub fn checkpoint_timeout_extend(
+        &self,
+        checkpoint: &str,
+        added_time_sec: u32,
+    ) -> Result<(), NmError> {
+        self.dbus
+            .checkpoint_timeout_extend(checkpoint, added_time_sec)
+    }
 }
 
-fn get_active_connection_by_uuid(
+fn get_nm_ac_obj_path_by_uuid(
     dbus: &NmDbus,
     uuid: &str,
 ) -> Result<String, NmError> {
-    let nm_acs = dbus.active_connections()?;
+    let nm_ac_obj_paths = dbus.active_connections()?;
 
-    for nm_ac in nm_acs {
-        if dbus.nm_ac_get_by_uuid(&nm_ac)? == uuid {
-            return Ok(nm_ac);
+    for nm_ac_obj_path in nm_ac_obj_paths {
+        if dbus.nm_ac_obj_path_uuid_get(&nm_ac_obj_path)? == uuid {
+            return Ok(nm_ac_obj_path);
         }
     }
     Ok("".into())
+}
+
+fn with_retry<T>(interval_ms: u64, count: usize, func: T) -> Result<(), NmError>
+where
+    T: FnOnce() -> Result<(), NmError> + Copy,
+{
+    let mut cur_count = 0usize;
+    while cur_count < count {
+        if let Err(e) = func() {
+            if cur_count == count - 1 {
+                return Err(e);
+            } else {
+                eprintln!("Retrying on NM dbus failure: {}", e);
+                std::thread::sleep(std::time::Duration::from_millis(
+                    interval_ms,
+                ));
+                cur_count += 1;
+                continue;
+            }
+        } else {
+            return Ok(());
+        }
+    }
+    Ok(())
 }
