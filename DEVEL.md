@@ -24,4 +24,3 @@
  * Grouping activation.
  * Skip activation of certain interface if state match.
  * Destroy or rollback checkpoint
-

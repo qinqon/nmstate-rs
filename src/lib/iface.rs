@@ -158,9 +158,27 @@ impl Interface {
         }
     }
 
+    pub(crate) fn clone_for_verify(&self) -> Self {
+        let mut iface_clone = self.clone();
+
+        match iface_clone {
+            Self::LinuxBridge(ref mut iface) => {
+                iface.pre_verify_cleanup();
+            },
+            Self::Ethernet(ref mut iface) => {
+                iface.pre_verify_cleanup();
+            },
+            Self::Unknown(ref mut iface) => {
+                iface.pre_verify_cleanup();
+            }
+        }
+
+        iface_clone
+    }
+
     pub(crate) fn verify(&self, current: &Self) -> Result<(), NmstateError> {
-        let self_value = serde_json::to_value(self)?;
-        let current_value = serde_json::to_value(current)?;
+        let self_value = serde_json::to_value(&self.clone_for_verify())?;
+        let current_value = serde_json::to_value(&current.clone_for_verify())?;
         if let Some(diff_value) = get_json_value_difference(
             format!("{}.interface", self.name()),
             &self_value,

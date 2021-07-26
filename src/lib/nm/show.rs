@@ -2,7 +2,7 @@ use nm_dbus::{NmApi, NmConnection, NmSettingIp, NmSettingIpMethod};
 
 use crate::{
     nm::error::nm_error_to_nmstate, BaseInterface, EthernetInterface,
-    Interface, InterfaceIp, InterfaceState, InterfaceType,
+    Interface, InterfaceIpv4, InterfaceIpv6, InterfaceState, InterfaceType,
     LinuxBridgeInterface, NetworkState, NmstateError,
 };
 
@@ -51,18 +51,19 @@ fn nm_conn_to_base_iface(nm_conn: &NmConnection) -> Option<BaseInterface> {
     if let Some(iface_name) = nm_conn.iface_name() {
         if let Some(iface_type) = nm_conn.iface_type() {
             let ipv4 = if let Some(ref nm_ipv4_setting) = nm_conn.ipv4 {
-                Some(nm_ip_setting_to_nmstate(nm_ipv4_setting))
+                Some(nm_ip_setting_to_nmstate4(nm_ipv4_setting))
             } else {
                 None
             };
             let ipv6 = if let Some(ref nm_ipv6_setting) = nm_conn.ipv6 {
-                Some(nm_ip_setting_to_nmstate(nm_ipv6_setting))
+                Some(nm_ip_setting_to_nmstate6(nm_ipv6_setting))
             } else {
                 None
             };
 
             return Some(BaseInterface {
                 name: iface_name.to_string(),
+                prop_list: vec!["name", "state", "iface_type", "ipv4", "ipv6"],
                 state: InterfaceState::Up,
                 iface_type: nm_iface_type_to_nmstate(iface_type),
                 ipv4: ipv4,
@@ -74,15 +75,49 @@ fn nm_conn_to_base_iface(nm_conn: &NmConnection) -> Option<BaseInterface> {
     return None;
 }
 
-fn nm_ip_setting_to_nmstate(nm_ip_setting: &NmSettingIp) -> InterfaceIp {
-    InterfaceIp {
-        enabled: if let Some(NmSettingIpMethod::Disabled) = nm_ip_setting.method
-        {
-            false
-        } else {
-            // By default NetworkManager is using auto method.
-            true
-        },
-        ..Default::default()
+fn nm_ip_setting_to_nmstate4(nm_ip_setting: &NmSettingIp) -> InterfaceIpv4 {
+    if let Some(nm_ip_method) = &nm_ip_setting.method {
+        let (enabled, dhcp) = match nm_ip_method {
+            NmSettingIpMethod::Disabled => (false, false),
+            NmSettingIpMethod::LinkLocal
+            | NmSettingIpMethod::Manual
+            | NmSettingIpMethod::Shared => (true, false),
+            NmSettingIpMethod::Auto => (true, true),
+            _ => {
+                eprintln!("WARN: Unexpected NM IP method {:?}", nm_ip_method);
+                (true, false)
+            }
+        };
+        InterfaceIpv4 {
+            enabled,
+            dhcp,
+            prop_list: vec!["enabled", "dhcp"],
+            ..Default::default()
+        }
+    } else {
+        InterfaceIpv4::default()
+    }
+}
+
+fn nm_ip_setting_to_nmstate6(nm_ip_setting: &NmSettingIp) -> InterfaceIpv6 {
+    if let Some(nm_ip_method) = &nm_ip_setting.method {
+        let (enabled, dhcp, autoconf) = match nm_ip_method {
+            NmSettingIpMethod::Disabled => (false, false, false),
+            NmSettingIpMethod::LinkLocal
+            | NmSettingIpMethod::Manual
+            | NmSettingIpMethod::Shared => (true, false, true),
+            NmSettingIpMethod::Auto => (true, true, true),
+            NmSettingIpMethod::Dhcp => (true, true, false),
+            NmSettingIpMethod::Ignore => (true, false, true),
+        };
+        InterfaceIpv6 {
+            enabled,
+            dhcp,
+            autoconf,
+            prop_list: vec!["enabled", "dhcp", "autoconf"],
+            ..Default::default()
+        }
+    } else {
+        InterfaceIpv6::default()
     }
 }

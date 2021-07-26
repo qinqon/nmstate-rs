@@ -18,6 +18,7 @@ use std::convert::TryFrom;
 const DBUS_SIGNATURE_STRING: &str = "s";
 const DBUS_SIGNATURE_BOOL: &str = "b";
 const DBUS_SIGNATURE_I32: &str = "i";
+const DBUS_SIGNATURE_ARRAY: &str = "a";
 
 fn own_value_to_string(
     value: &zvariant::OwnedValue,
@@ -56,6 +57,20 @@ fn own_value_to_i32(value: &zvariant::OwnedValue) -> Result<i32, NmError> {
     }
 }
 
+// TODO: Use macro instead
+fn own_value_to_array(
+    value: &zvariant::OwnedValue,
+) -> Result<&zvariant::Array, NmError> {
+    check_value_is_array(value)?;
+    match <&zvariant::Array>::try_from(value) {
+        Ok(s) => Ok(s),
+        Err(e) => Err(NmError::new(
+            ErrorKind::Bug,
+            format!("Failed to convert {:?} to array: {}", &value, e),
+        )),
+    }
+}
+
 fn check_value_is_string(value: &zvariant::OwnedValue) -> Result<(), NmError> {
     if value.value_signature().as_str() != DBUS_SIGNATURE_STRING {
         Err(NmError::new(
@@ -89,7 +104,22 @@ fn check_value_is_i32(value: &zvariant::OwnedValue) -> Result<(), NmError> {
     }
 }
 
-pub(crate) fn value_to_string(
+fn check_value_is_array(value: &zvariant::OwnedValue) -> Result<(), NmError> {
+    if !value
+        .value_signature()
+        .as_str()
+        .starts_with(DBUS_SIGNATURE_ARRAY)
+    {
+        Err(NmError::new(
+            ErrorKind::Bug,
+            format!("OwnedValue {:?} is not array", &value),
+        ))
+    } else {
+        Ok(())
+    }
+}
+
+pub(crate) fn value_hash_get_string(
     value_hashmap: &std::collections::HashMap<String, zvariant::OwnedValue>,
     key: &str,
 ) -> Result<Option<String>, NmError> {
@@ -100,7 +130,7 @@ pub(crate) fn value_to_string(
     }
 }
 
-pub(crate) fn value_to_bool(
+pub(crate) fn value_hash_get_bool(
     value_hashmap: &std::collections::HashMap<String, zvariant::OwnedValue>,
     key: &str,
 ) -> Result<Option<bool>, NmError> {
@@ -111,7 +141,7 @@ pub(crate) fn value_to_bool(
     }
 }
 
-pub(crate) fn value_to_i32(
+pub(crate) fn value_hash_get_i32(
     value_hashmap: &std::collections::HashMap<String, zvariant::OwnedValue>,
     key: &str,
 ) -> Result<Option<i32>, NmError> {
@@ -119,5 +149,56 @@ pub(crate) fn value_to_i32(
         Ok(Some(own_value_to_i32(value)?))
     } else {
         Ok(None)
+    }
+}
+
+pub(crate) fn value_hash_get_array<'a>(
+    value_hashmap: &'a std::collections::HashMap<String, zvariant::OwnedValue>,
+    key: &str,
+) -> Result<Option<&'a zvariant::Array<'a>>, NmError> {
+    if let Some(value) = value_hashmap.get(key) {
+        Ok(Some(own_value_to_array(value)?))
+    } else {
+        Ok(None)
+    }
+}
+
+pub(crate) fn value_dict_get_string(
+    value_dict: &zvariant::Dict,
+    key: &str,
+) -> Result<Option<String>, NmError> {
+    match value_dict.get::<str, zvariant::Value>(key) {
+        Ok(Some(value)) => match <&str>::try_from(value) {
+            Ok(v) => Ok(Some(v.to_string())),
+            Err(e) => Err(NmError::new(
+                ErrorKind::Bug,
+                format!("Failed to convert {:?} to string: {}", &value, e),
+            )),
+        },
+        Ok(None) => Ok(None),
+        Err(e) => Err(NmError::new(
+            ErrorKind::Bug,
+            format!("Failed to get {} from {:?}: {}", key, value_dict, e),
+        )),
+    }
+}
+
+pub(crate) fn value_dict_get_u32(
+    value_dict: &zvariant::Dict,
+    key: &str,
+) -> Result<Option<u32>, NmError> {
+    match value_dict.get::<str, zvariant::Value>(key) {
+        Ok(Some(value)) => match <u32>::try_from(value) {
+            Ok(v) => Ok(Some(v)),
+            Err(e) => Err(NmError::new(
+                ErrorKind::Bug,
+                format!("Failed to convert {:?} to u32: {}", &value, e),
+            )),
+        },
+        Ok(None) => Ok(None),
+        Err(e) => Err(NmError::new(
+            ErrorKind::Bug,
+            format!("Failed to get {} from {:?}: {}", key, value_dict, e),
+        )),
     }
 }

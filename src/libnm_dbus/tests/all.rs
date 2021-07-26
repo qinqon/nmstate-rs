@@ -57,11 +57,13 @@ fn test_full() {
             ..Default::default()
         }),
         ipv4: Some(NmSettingIp {
-            method: Some(NmSettingIpMethod::Disabled),
+            method: Some(NmSettingIpMethod::Manual),
+            addresses: vec!["192.0.2.251/24".to_string()],
             ..Default::default()
         }),
         ipv6: Some(NmSettingIp {
-            method: Some(NmSettingIpMethod::Disabled),
+            method: Some(NmSettingIpMethod::Manual),
+            addresses: vec!["2001:db8:1::1/64".to_string()],
             ..Default::default()
         }),
         ..Default::default()
@@ -107,6 +109,16 @@ fn test_full() {
         }),
         bridge: Some(NmSettingBridge {
             stp: Some(false),
+            ..Default::default()
+        }),
+        ipv4: Some(NmSettingIp {
+            method: Some(NmSettingIpMethod::Manual),
+            addresses: vec!["192.0.2.251/24".to_string()],
+            ..Default::default()
+        }),
+        ipv6: Some(NmSettingIp {
+            method: Some(NmSettingIpMethod::Manual),
+            addresses: vec!["2001:db8:1::1/64".to_string()],
             ..Default::default()
         }),
         ..Default::default()

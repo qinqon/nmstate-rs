@@ -17,7 +17,10 @@ use std::collections::HashMap;
 use std::convert::TryFrom;
 
 use crate::{
-    dbus_value::value_to_string,
+    dbus_value::{
+        value_dict_get_string, value_dict_get_u32, value_hash_get_array,
+        value_hash_get_string,
+    },
     error::{ErrorKind, NmError},
 };
 
@@ -78,6 +81,7 @@ impl TryFrom<&str> for NmSettingIpMethod {
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct NmSettingIp {
     pub method: Option<NmSettingIpMethod>,
+    pub addresses: Vec<String>,
 }
 
 impl TryFrom<&HashMap<String, zvariant::OwnedValue>> for NmSettingIp {
@@ -85,16 +89,32 @@ impl TryFrom<&HashMap<String, zvariant::OwnedValue>> for NmSettingIp {
     fn try_from(
         value: &HashMap<String, zvariant::OwnedValue>,
     ) -> Result<Self, Self::Error> {
-        let method = if let Some(method_str) = value_to_string(value, "method")?
-        {
-            Some(NmSettingIpMethod::try_from(method_str.as_str())?)
-        } else {
-            return Err(NmError::new(
-                ErrorKind::InvalidArgument,
-                "No IP method found".to_string(),
-            ));
-        };
-        Ok(Self { method })
+        let method =
+            if let Some(method_str) = value_hash_get_string(value, "method")? {
+                Some(NmSettingIpMethod::try_from(method_str.as_str())?)
+            } else {
+                return Err(NmError::new(
+                    ErrorKind::InvalidArgument,
+                    "No IP method found".to_string(),
+                ));
+            };
+        let mut addresses = Vec::new();
+        if let Some(nm_addrs) = value_hash_get_array(value, "address-data")? {
+            for nm_addr in nm_addrs.iter() {
+                if let Ok(nm_addr) = <&zvariant::Dict>::try_from(nm_addr) {
+                    if let Some(address) =
+                        value_dict_get_string(nm_addr, "address")?
+                    {
+                        if let Some(prefix) =
+                            value_dict_get_u32(nm_addr, "prefix")?
+                        {
+                            addresses.push(format!("{}/{}", address, prefix));
+                        }
+                    }
+                }
+            }
+        }
+        Ok(Self { method, addresses })
     }
 }
 
@@ -106,6 +126,46 @@ impl NmSettingIp {
         if let Some(v) = &self.method {
             ret.insert("method", zvariant::Value::new(format!("{}", v)));
         }
+        let mut addresss_data = zvariant::Array::new(
+            zvariant::Signature::from_str_unchecked("a{sv}"),
+        );
+        for addr_str in &self.addresses {
+            let addr_str_split: Vec<&str> = addr_str.split("/").collect();
+            if addr_str_split.len() != 2 {
+                return Err(NmError::new(
+                    ErrorKind::InvalidArgument,
+                    format!("Invalid IP address {}", addr_str),
+                ));
+            }
+            let prefix = match addr_str_split[1].parse::<u32>() {
+                Ok(p) => p,
+                Err(e) => {
+                    return Err(NmError::new(
+                        ErrorKind::InvalidArgument,
+                        format!(
+                            "Invalid IP address prefix {}: {}",
+                            addr_str_split[1], e
+                        ),
+                    ));
+                }
+            };
+            let mut addr_dict = zvariant::Dict::new(
+                zvariant::Signature::from_str_unchecked("s"),
+                zvariant::Signature::from_str_unchecked("v"),
+            );
+            addr_dict.append(
+                zvariant::Value::new("address".to_string()),
+                zvariant::Value::Value(Box::new(zvariant::Value::new(
+                    addr_str_split[0].to_string(),
+                ))),
+            )?;
+            addr_dict.append(
+                zvariant::Value::new("prefix".to_string()),
+                zvariant::Value::Value(Box::new(zvariant::Value::U32(prefix))),
+            )?;
+            addresss_data.append(zvariant::Value::Dict(addr_dict))?;
+        }
+        ret.insert("address-data", zvariant::Value::Array(addresss_data));
         Ok(ret)
     }
 }

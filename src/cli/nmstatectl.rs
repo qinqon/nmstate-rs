@@ -86,12 +86,7 @@ const IFACE_TOP_PRIORTIES: [&str; 2] = ["name", "type"];
 fn sort_netstate(
     net_state: NetworkState,
 ) -> Result<SortedNetworkState, CliError> {
-    let mut ifaces = Vec::new();
-    if let Some(net_ifaces) = net_state.interfaces {
-        for iface in net_ifaces.to_vec() {
-            ifaces.push(iface.clone());
-        }
-    }
+    let mut ifaces = net_state.interfaces.to_vec();
     ifaces.sort_by(|a, b| a.name().cmp(b.name()));
 
     if let Value::Sequence(ifaces) = serde_yaml::to_value(&ifaces)? {

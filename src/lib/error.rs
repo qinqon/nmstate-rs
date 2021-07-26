@@ -4,6 +4,7 @@ pub enum ErrorKind {
     PluginFailure,
     Bug,
     VerificationError,
+    NotImplementedError,
 }
 
 impl std::fmt::Display for ErrorKind {

@@ -61,6 +61,16 @@ impl From<zbus::Error> for NmError {
     }
 }
 
+impl From<zvariant::Error> for NmError {
+    fn from(e: zvariant::Error) -> Self {
+        Self {
+            kind: ErrorKind::Bug,
+            msg: format!("{}", e),
+            dbus_error: None,
+        }
+    }
+}
+
 impl From<std::io::Error> for NmError {
     fn from(e: std::io::Error) -> Self {
         Self::new(ErrorKind::Bug, format!("Bug failed to write file: {}", e))

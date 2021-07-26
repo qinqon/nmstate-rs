@@ -8,7 +8,7 @@ use crate::{
         nm_apply, nm_checkpoint_create, nm_checkpoint_destroy,
         nm_checkpoint_rollback, nm_checkpoint_timeout_extend, nm_retrieve,
     },
-    ErrorKind, Interface, Interfaces, NmstateError,
+    Interface, Interfaces, NmstateError,
 };
 
 const VERIFY_RETRY_INTERVAL_MILLISECONDS: u64 = 500;
@@ -16,7 +16,10 @@ const VERIFY_RETRY_COUNT: usize = 60;
 
 #[derive(Clone, Debug, Serialize, Deserialize, Default)]
 pub struct NetworkState {
-    pub interfaces: Option<Interfaces>,
+    #[serde(default)]
+    pub interfaces: Interfaces,
+    #[serde(skip)]
+    pub prop_list: Vec<&'static str>,
 }
 
 impl NetworkState {
@@ -25,13 +28,7 @@ impl NetworkState {
     }
 
     pub fn append_interface_data(&mut self, iface: Interface) {
-        if let Some(ref mut ifaces) = self.interfaces {
-            ifaces.push(iface);
-        } else {
-            let mut interfaces = Interfaces::new();
-            interfaces.push(iface);
-            self.interfaces = Some(interfaces);
-        }
+        self.interfaces.push(iface);
     }
 
     pub fn retrieve() -> Result<Self, NmstateError> {
@@ -65,14 +62,11 @@ impl NetworkState {
     }
 
     fn update_state(&mut self, other: &Self) -> Result<(), NmstateError> {
-        if let Some(ref mut self_ifaces) = self.interfaces {
-            if let Some(other_ifaces) = &other.interfaces {
-                self_ifaces.update(other_ifaces)?;
-            }
+        if other.prop_list.contains(&"interfaces") {
+            self.interfaces.update(&other.interfaces)
         } else {
-            self.interfaces = other.interfaces.clone();
+            Ok(())
         }
-        Ok(())
     }
 
     pub fn gen_conf(
@@ -82,21 +76,7 @@ impl NetworkState {
     }
 
     fn verify(&self, current: &Self) -> Result<(), NmstateError> {
-        if let Some(ifaces) = &self.interfaces {
-            if let Some(cur_ifaces) = &current.interfaces {
-                ifaces.verify(&cur_ifaces)
-            } else {
-                Err(NmstateError::new(
-                    ErrorKind::VerificationError,
-                    format!(
-                        "Got no interface in current state while desired {:?}",
-                        ifaces
-                    ),
-                ))
-            }
-        } else {
-            Ok(())
-        }
+        self.interfaces.verify(&current.interfaces)
     }
 }
 

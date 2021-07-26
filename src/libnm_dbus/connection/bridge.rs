@@ -16,7 +16,7 @@
 use std::collections::HashMap;
 use std::convert::TryFrom;
 
-use crate::{dbus_value::value_to_bool, error::NmError};
+use crate::{dbus_value::value_hash_get_bool, error::NmError};
 
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct NmSettingBridge {
@@ -29,7 +29,7 @@ impl TryFrom<&HashMap<String, zvariant::OwnedValue>> for NmSettingBridge {
         value: &HashMap<String, zvariant::OwnedValue>,
     ) -> Result<Self, Self::Error> {
         Ok(Self {
-            stp: value_to_bool(value, "stp")?,
+            stp: value_hash_get_bool(value, "stp")?,
         })
     }
 }

@@ -19,7 +19,9 @@ use std::convert::TryFrom;
 use crate::{
     connection::bridge::{NmSettingBridge, NmSettingBridgePort},
     connection::ip::NmSettingIp,
-    dbus_value::{value_to_bool, value_to_i32, value_to_string},
+    dbus_value::{
+        value_hash_get_bool, value_hash_get_i32, value_hash_get_string,
+    },
     error::NmError,
 };
 
@@ -143,20 +145,20 @@ impl TryFrom<&HashMap<String, zvariant::OwnedValue>> for NmSettingConnection {
     fn try_from(
         value: &HashMap<String, zvariant::OwnedValue>,
     ) -> Result<Self, Self::Error> {
-        let autoconnect_ports = match value_to_i32(value, "autoconnect-slaves")?
-        {
-            Some(NM_AUTOCONENCT_PORT_YES) => Some(true),
-            Some(NM_AUTOCONENCT_PORT_NO) => Some(false),
-            _ => None,
-        };
+        let autoconnect_ports =
+            match value_hash_get_i32(value, "autoconnect-slaves")? {
+                Some(NM_AUTOCONENCT_PORT_YES) => Some(true),
+                Some(NM_AUTOCONENCT_PORT_NO) => Some(false),
+                _ => None,
+            };
         Ok(Self {
-            id: value_to_string(value, "id")?,
-            uuid: value_to_string(value, "uuid")?,
-            iface_type: value_to_string(value, "type")?,
-            iface_name: value_to_string(value, "interface-name")?,
-            controller: value_to_string(value, "master")?,
-            controller_type: value_to_string(value, "slave-type")?,
-            autoconnect: match value_to_bool(value, "autoconnect")? {
+            id: value_hash_get_string(value, "id")?,
+            uuid: value_hash_get_string(value, "uuid")?,
+            iface_type: value_hash_get_string(value, "type")?,
+            iface_name: value_hash_get_string(value, "interface-name")?,
+            controller: value_hash_get_string(value, "master")?,
+            controller_type: value_hash_get_string(value, "slave-type")?,
+            autoconnect: match value_hash_get_bool(value, "autoconnect")? {
                 Some(v) => Some(v),
                 // For autoconnect, None means true
                 None => Some(true),

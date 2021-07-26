@@ -76,4 +76,8 @@ impl LinuxBridgeInterface {
         }
         ret
     }
+
+    pub(crate) fn pre_verify_cleanup(&mut self) {
+        self.base.pre_verify_cleanup();
+    }
 }

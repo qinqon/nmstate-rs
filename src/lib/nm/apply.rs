@@ -7,8 +7,8 @@ use nm_dbus::{
 
 use crate::{
     nm::checkpoint::nm_checkpoint_timeout_extend,
-    nm::error::nm_error_to_nmstate, ErrorKind, Interface, InterfaceIp,
-    InterfaceType, LinuxBridgeConfig, LinuxBridgeOptions,
+    nm::error::nm_error_to_nmstate, ErrorKind, Interface, InterfaceIpv4,
+    InterfaceIpv6, InterfaceType, LinuxBridgeConfig, LinuxBridgeOptions,
     LinuxBridgeStpOptions, NetworkState, NmstateError,
 };
 
@@ -27,55 +27,53 @@ pub(crate) fn nm_apply(
     let mut nm_conn_uuids: Vec<String> = Vec::new();
     let mut ports: HashMap<String, (String, InterfaceType)> = HashMap::new();
 
-    if let Some(ifaces) = &net_state.interfaces {
-        let ifaces = ifaces.to_vec();
-        for iface in &ifaces {
-            for port_name in iface.ports() {
-                ports.insert(
-                    port_name,
-                    (iface.name().to_string(), iface.iface_type().clone()),
-                );
-            }
+    let ifaces = net_state.interfaces.to_vec();
+    for iface in &ifaces {
+        for port_name in iface.ports() {
+            ports.insert(
+                port_name,
+                (iface.name().to_string(), iface.iface_type().clone()),
+            );
         }
-        let exist_nm_conns = nm_api
-            .nm_connections_get()
-            .or_else(|ref nm_error| Err(nm_error_to_nmstate(nm_error)))?;
-        let nm_acs = nm_api
-            .nm_active_connections_get()
-            .or_else(|ref nm_error| Err(nm_error_to_nmstate(nm_error)))?;
-        let nm_ac_uuids: Vec<&str> =
-            nm_acs.iter().map(|nm_ac| &nm_ac.uuid as &str).collect();
+    }
+    let exist_nm_conns = nm_api
+        .nm_connections_get()
+        .or_else(|ref nm_error| Err(nm_error_to_nmstate(nm_error)))?;
+    let nm_acs = nm_api
+        .nm_active_connections_get()
+        .or_else(|ref nm_error| Err(nm_error_to_nmstate(nm_error)))?;
+    let nm_ac_uuids: Vec<&str> =
+        nm_acs.iter().map(|nm_ac| &nm_ac.uuid as &str).collect();
 
-        let mut index: usize = 0;
-        for iface in &ifaces {
-            if index % TIMEOUT_ADJUST_PROFILE_ADDTION_GROUP_SIZE
-                == TIMEOUT_ADJUST_PROFILE_ADDTION_GROUP_SIZE - 1
-            {
-                nm_checkpoint_timeout_extend(
-                    checkpoint,
-                    TIMEOUT_SECONDS_FOR_PROFILE_ADDTION,
-                )?;
-            }
-            index += 1;
-            if iface.iface_type() != InterfaceType::Unknown {
-                let (uuid, nm_conn) = iface_to_nm_connection(
-                    iface,
-                    &ports,
-                    &exist_nm_conns,
-                    &nm_ac_uuids,
-                )?;
-                nm_api.connection_add(&nm_conn).or_else(|ref nm_error| {
-                    Err(nm_error_to_nmstate(nm_error))
-                })?;
-                delete_exist_profiles(
-                    &nm_api,
-                    &exist_nm_conns,
-                    iface.name(),
-                    &iface.iface_type(),
-                    &uuid,
-                )?;
-                nm_conn_uuids.push(uuid);
-            }
+    let mut index: usize = 0;
+    for iface in &ifaces {
+        if index % TIMEOUT_ADJUST_PROFILE_ADDTION_GROUP_SIZE
+            == TIMEOUT_ADJUST_PROFILE_ADDTION_GROUP_SIZE - 1
+        {
+            nm_checkpoint_timeout_extend(
+                checkpoint,
+                TIMEOUT_SECONDS_FOR_PROFILE_ADDTION,
+            )?;
+        }
+        index += 1;
+        if iface.iface_type() != InterfaceType::Unknown {
+            let (uuid, nm_conn) = iface_to_nm_connection(
+                iface,
+                &ports,
+                &exist_nm_conns,
+                &nm_ac_uuids,
+            )?;
+            nm_api
+                .connection_add(&nm_conn)
+                .or_else(|ref nm_error| Err(nm_error_to_nmstate(nm_error)))?;
+            delete_exist_profiles(
+                &nm_api,
+                &exist_nm_conns,
+                iface.name(),
+                &iface.iface_type(),
+                &uuid,
+            )?;
+            nm_conn_uuids.push(uuid);
         }
     }
     for nm_conn_uuid in &nm_conn_uuids {
@@ -144,10 +142,10 @@ fn iface_to_nm_connection(
         ..Default::default()
     };
     if let Some(iface_ip) = &base_iface.ipv4 {
-        nm_conn.ipv4 = Some(iface_ip_to_nm(&iface_ip)?);
+        nm_conn.ipv4 = Some(iface_ipv4_to_nm(&iface_ip)?);
     }
     if let Some(iface_ip) = &base_iface.ipv6 {
-        nm_conn.ipv6 = Some(iface_ip_to_nm(&iface_ip)?);
+        nm_conn.ipv6 = Some(iface_ipv6_to_nm(&iface_ip)?);
     }
     if let Interface::LinuxBridge(br_iface) = iface {
         if let Some(br_conf) = &br_iface.bridge {
@@ -157,13 +155,66 @@ fn iface_to_nm_connection(
     Ok((uuid, nm_conn))
 }
 
-fn iface_ip_to_nm(iface_ip: &InterfaceIp) -> Result<NmSettingIp, NmstateError> {
-    Ok(NmSettingIp {
-        method: Some(if iface_ip.enabled {
+fn iface_ipv4_to_nm(
+    iface_ip: &InterfaceIpv4,
+) -> Result<NmSettingIp, NmstateError> {
+    let mut addresses: Vec<String> = Vec::new();
+    let method = if iface_ip.enabled {
+        if iface_ip.dhcp {
             NmSettingIpMethod::Auto
+        } else if iface_ip.addresses.len() > 0 {
+            for ip_addr in &iface_ip.addresses {
+                addresses
+                    .push(format!("{}/{}", ip_addr.ip, ip_addr.prefix_length));
+            }
+            NmSettingIpMethod::Manual
         } else {
             NmSettingIpMethod::Disabled
-        }),
+        }
+    } else {
+        NmSettingIpMethod::Disabled
+    };
+    Ok(NmSettingIp {
+        method: Some(method),
+        addresses,
+        ..Default::default()
+    })
+}
+
+fn iface_ipv6_to_nm(
+    iface_ip: &InterfaceIpv6,
+) -> Result<NmSettingIp, NmstateError> {
+    let mut addresses: Vec<String> = Vec::new();
+    let method = if iface_ip.enabled {
+        match (iface_ip.dhcp, iface_ip.autoconf) {
+            (true, true) => NmSettingIpMethod::Auto,
+            (true, false) => NmSettingIpMethod::Dhcp,
+            (false, true) => {
+                return Err(NmstateError::new(
+                    ErrorKind::NotImplementedError,
+                    "Autoconf without DHCP is not supported yet".to_string(),
+                ))
+            }
+            (false, false) => {
+                if iface_ip.addresses.len() > 0 {
+                    for ip_addr in &iface_ip.addresses {
+                        addresses.push(format!(
+                            "{}/{}",
+                            ip_addr.ip, ip_addr.prefix_length
+                        ));
+                    }
+                    NmSettingIpMethod::Manual
+                } else {
+                    NmSettingIpMethod::Disabled
+                }
+            }
+        }
+    } else {
+        NmSettingIpMethod::Disabled
+    };
+    Ok(NmSettingIp {
+        method: Some(method),
+        addresses,
         ..Default::default()
     })
 }

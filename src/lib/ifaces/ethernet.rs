@@ -30,4 +30,8 @@ impl EthernetInterface {
         // TODO: this should be done by Trait
         self.base.update(&other_iface.base);
     }
+
+    pub(crate) fn pre_verify_cleanup(&mut self) {
+        self.base.pre_verify_cleanup();
+    }
 }
