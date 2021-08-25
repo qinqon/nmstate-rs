@@ -4,6 +4,7 @@ use crate::{
     nm::error::nm_error_to_nmstate, BaseInterface, EthernetInterface,
     Interface, InterfaceIpv4, InterfaceIpv6, InterfaceState, InterfaceType,
     LinuxBridgeInterface, NetworkState, NmstateError,
+    UnknownInterface
 };
 
 const NM_SETTING_BRIDGE_SETTING_NAME: &str = "bridge";
@@ -31,7 +32,7 @@ pub(crate) fn nm_retrieve() -> Result<NetworkState, NmstateError> {
                         ..Default::default()
                     })
                 }
-                _ => Interface::Unknown(base_iface),
+                _ => Interface::Unknown(UnknownInterface::new(base_iface)),
             };
             net_state.append_interface_data(iface);
         }

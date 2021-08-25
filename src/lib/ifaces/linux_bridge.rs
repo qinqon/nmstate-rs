@@ -10,6 +10,41 @@ pub struct LinuxBridgeInterface {
     pub bridge: Option<LinuxBridgeConfig>,
 }
 
+impl Default for LinuxBridgeInterface {
+    fn default() -> Self {
+        Self {
+            base: BaseInterface {
+                iface_type: InterfaceType::LinuxBridge,
+                ..Default::default()
+            },
+            bridge: None,
+        }
+    }
+}
+
+impl LinuxBridgeInterface {
+    pub(crate) fn update(&mut self, other_iface: &LinuxBridgeInterface) {
+        // TODO: this should be done by Trait
+        self.base.update(&other_iface.base);
+    }
+
+    pub(crate) fn ports(&self) -> Option<Vec<&str>> {
+        let mut port_names = Vec::new();
+        if let Some(br_conf) = &self.bridge {
+            if let Some(ports) = &br_conf.port {
+                for port in ports {
+                    port_names.push(port.name.as_str());
+                }
+            }
+        }
+        Some(port_names)
+    }
+
+    pub(crate) fn pre_verify_cleanup(&mut self) {
+        self.base.pre_verify_cleanup();
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
 #[serde(rename_all = "kebab-case")]
 pub struct LinuxBridgeConfig {
@@ -43,41 +78,4 @@ pub struct LinuxBridgeOptions {
 pub struct LinuxBridgeStpOptions {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub enabled: Option<bool>,
-}
-
-impl Default for LinuxBridgeInterface {
-    fn default() -> Self {
-        Self {
-            base: BaseInterface {
-                iface_type: InterfaceType::LinuxBridge,
-                ..Default::default()
-            },
-            bridge: None,
-        }
-    }
-}
-
-impl LinuxBridgeInterface {
-    pub(crate) fn update(&mut self, other_iface: &LinuxBridgeInterface) {
-        // TODO: this should be done by Trait
-        self.base.update(&other_iface.base);
-    }
-
-    pub(crate) fn ports(&self) -> Vec<String> {
-        let mut ret = Vec::new();
-        if let Some(LinuxBridgeConfig {
-            port: Some(port_configs),
-            ..
-        }) = &self.bridge
-        {
-            for port_config in port_configs {
-                ret.push(port_config.name.clone())
-            }
-        }
-        ret
-    }
-
-    pub(crate) fn pre_verify_cleanup(&mut self) {
-        self.base.pre_verify_cleanup();
-    }
 }

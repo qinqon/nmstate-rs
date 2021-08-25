@@ -8,7 +8,9 @@ mod nm;
 mod state;
 
 pub use crate::error::{ErrorKind, NmstateError};
-pub use crate::iface::{Interface, InterfaceState, InterfaceType};
+pub use crate::iface::{
+    Interface, InterfaceState, InterfaceType, UnknownInterface,
+};
 pub use crate::ifaces::{
     BaseInterface, EthernetInterface, Interfaces, LinuxBridgeConfig,
     LinuxBridgeInterface, LinuxBridgeOptions, LinuxBridgePortConfig,

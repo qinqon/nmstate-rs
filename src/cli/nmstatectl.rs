@@ -19,7 +19,19 @@ fn main() {
         .setting(clap::AppSettings::SubcommandRequired)
         .subcommand(
             clap::SubCommand::with_name(SUB_CMD_SHOW)
-                .about("Show network state"),
+                .about("Show network state")
+                .arg(
+                    clap::Arg::with_name("IFNAME")
+                        .index(1)
+                        .help("Show speific interface only"),
+                )
+                .arg(
+                    clap::Arg::with_name("KERNEL")
+                        .short("k")
+                        .long("kernel")
+                        .takes_value(false)
+                        .help("Show kernel network state only"),
+                ),
         )
         .subcommand(
             clap::SubCommand::with_name(SUB_CMD_APPLY)
@@ -29,6 +41,13 @@ fn main() {
                         .required(true)
                         .index(1)
                         .help("Network state file"),
+                )
+                .arg(
+                    clap::Arg::with_name("KERNEL")
+                        .short("k")
+                        .long("kernel")
+                        .takes_value(false)
+                        .help("Apply network state to kernel only"),
                 ),
         )
         .subcommand(
@@ -46,11 +65,14 @@ fn main() {
         if let Some(file_path) = matches.value_of("STATE_FILE") {
             print_result_and_exit(gen_conf(&file_path));
         }
-    } else if let Some(_) = matches.subcommand_matches(SUB_CMD_SHOW) {
-        print_result_and_exit(show());
+    } else if let Some(matches) = matches.subcommand_matches(SUB_CMD_SHOW) {
+        print_result_and_exit(show(&matches));
     } else if let Some(matches) = matches.subcommand_matches(SUB_CMD_APPLY) {
         if let Some(file_path) = matches.value_of("STATE_FILE") {
-            print_result_and_exit(apply(&file_path));
+            print_result_and_exit(apply(
+                &file_path,
+                matches.is_present("KERNEL"),
+            ));
         }
     }
 }
@@ -127,14 +149,30 @@ fn sort_netstate(
 }
 
 // Ordering the outputs
-fn show() -> Result<String, CliError> {
-    let sorted_net_state = sort_netstate(NetworkState::retrieve()?)?;
-    Ok(serde_yaml::to_string(&sorted_net_state)?)
+fn show(matches: &clap::ArgMatches) -> Result<String, CliError> {
+    let mut net_state = NetworkState::new();
+    if matches.is_present("KERNEL") {
+        net_state.kernel_only(true);
+    }
+    net_state.retrieve()?;
+    Ok(if let Some(ifname) = matches.value_of("IFNAME") {
+        let mut new_net_state = NetworkState::new();
+        new_net_state.kernel_only(matches.is_present("KERNEL"));
+        for iface in net_state.interfaces.to_vec() {
+            if iface.name() == ifname {
+                new_net_state.append_interface_data(iface.clone())
+            }
+        }
+        serde_yaml::to_string(&new_net_state)?
+    } else {
+        serde_yaml::to_string(&sort_netstate(net_state)?)?
+    })
 }
 
-fn apply(file_path: &str) -> Result<String, CliError> {
+fn apply(file_path: &str, kernel_only: bool) -> Result<String, CliError> {
     let fd = std::fs::File::open(file_path)?;
-    let net_state: NetworkState = serde_yaml::from_reader(fd)?;
+    let mut net_state: NetworkState = serde_yaml::from_reader(fd)?;
+    net_state.kernel_only(kernel_only);
     net_state.apply()?;
     let sorted_net_state = sort_netstate(net_state)?;
     Ok(serde_yaml::to_string(&sorted_net_state)?)

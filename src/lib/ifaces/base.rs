@@ -14,9 +14,9 @@ pub struct BaseInterface {
     pub ipv4: Option<InterfaceIpv4>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub ipv6: Option<InterfaceIpv6>,
-    #[serde(skip_serializing, skip_deserializing)]
+    #[serde(skip)]
     pub controller: Option<String>,
-    #[serde(skip_serializing, skip_deserializing)]
+    #[serde(skip)]
     pub controller_type: Option<InterfaceType>,
 }
 
@@ -35,6 +35,7 @@ impl BaseInterface {
         {
             self.state = other.state.clone();
         }
+
         if other.prop_list.contains(&"ipv4") {
             if let Some(ref other_ipv4) = other.ipv4 {
                 if let Some(ref mut self_ipv4) = self.ipv4 {

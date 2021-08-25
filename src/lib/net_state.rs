@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    nispor::nispor_retrieve,
+    nispor::{nispor_apply, nispor_retrieve},
     nm::{
         nm_apply, nm_checkpoint_create, nm_checkpoint_destroy,
         nm_checkpoint_rollback, nm_checkpoint_timeout_extend, nm_retrieve,
@@ -19,10 +19,20 @@ pub struct NetworkState {
     #[serde(default)]
     pub interfaces: Interfaces,
     #[serde(skip)]
+    // Contain a list of struct member name which is defined explicitly in
+    // desire state instead of generated.
     pub prop_list: Vec<&'static str>,
+    #[serde(skip)]
+    // TODO: Hide user space only info when serialize
+    kernel_only: bool,
 }
 
 impl NetworkState {
+    pub fn kernel_only(&mut self, value: bool) -> &mut Self {
+        self.kernel_only = value;
+        self
+    }
+
     pub fn new() -> Self {
         Default::default()
     }
@@ -31,34 +41,65 @@ impl NetworkState {
         self.interfaces.push(iface);
     }
 
-    pub fn retrieve() -> Result<Self, NmstateError> {
-        let mut state = nispor_retrieve()?;
-        let nm_state = nm_retrieve()?;
-        // TODO: Priority handling
-        state.update_state(&nm_state)?;
-        Ok(state)
+    pub fn retrieve(&mut self) -> Result<&mut Self, NmstateError> {
+        self.interfaces = nispor_retrieve()?.interfaces;
+        if !self.kernel_only {
+            let nm_state = nm_retrieve()?;
+            // TODO: Priority handling
+            self.update_state(&nm_state)?;
+        }
+        Ok(self)
     }
 
     pub fn apply(&self) -> Result<(), NmstateError> {
-        // TODO: Verify
-        let checkpoint = nm_checkpoint_create()?;
-        with_nm_checkpoint(&checkpoint, || {
-            let desire_state = self.clone();
-            nm_apply(self, &checkpoint)?;
-            nm_checkpoint_timeout_extend(
-                &checkpoint,
-                (VERIFY_RETRY_INTERVAL_MILLISECONDS * VERIFY_RETRY_COUNT as u64
-                    / 1000) as u32,
-            )?;
+        let desire_state_to_edit = self.clone();
+        let desire_state_to_verify = self.clone();
+        let mut cur_net_state = NetworkState::new();
+        cur_net_state.kernel_only(self.kernel_only);
+        cur_net_state.retrieve()?;
+
+        let (add_net_state, chg_net_state, del_net_state) =
+            desire_state_to_edit.gen_state_for_apply(&cur_net_state)?;
+
+        if !self.kernel_only {
+            let checkpoint = nm_checkpoint_create()?;
+            with_nm_checkpoint(&checkpoint, || {
+                nm_apply(
+                    &add_net_state,
+                    //    chg_net_state,
+                    //    del_net_state,
+                    //    cur_net_state,
+                    &checkpoint,
+                )?;
+                nm_checkpoint_timeout_extend(
+                    &checkpoint,
+                    (VERIFY_RETRY_INTERVAL_MILLISECONDS
+                        * VERIFY_RETRY_COUNT as u64
+                        / 1000) as u32,
+                )?;
+                with_retry(
+                    VERIFY_RETRY_INTERVAL_MILLISECONDS,
+                    VERIFY_RETRY_COUNT,
+                    || {
+                        let mut new_cur_net_state = cur_net_state.clone();
+                        new_cur_net_state.retrieve()?;
+                        desire_state_to_verify.verify(&new_cur_net_state)
+                    },
+                )
+            })
+        } else {
+            // TODO: Need checkpoint for kernel only mode
+            nispor_apply(&add_net_state, &chg_net_state, &del_net_state)?;
             with_retry(
                 VERIFY_RETRY_INTERVAL_MILLISECONDS,
                 VERIFY_RETRY_COUNT,
                 || {
-                    let cur_state = NetworkState::retrieve()?;
-                    desire_state.verify(&cur_state)
+                    let mut new_cur_net_state = cur_net_state.clone();
+                    new_cur_net_state.retrieve()?;
+                    desire_state_to_verify.verify(&new_cur_net_state)
                 },
             )
-        })
+        }
     }
 
     fn update_state(&mut self, other: &Self) -> Result<(), NmstateError> {
@@ -77,6 +118,39 @@ impl NetworkState {
 
     fn verify(&self, current: &Self) -> Result<(), NmstateError> {
         self.interfaces.verify(&current.interfaces)
+    }
+
+    // Return three NetworkState:
+    //  * State for addition.
+    //  * State for change.
+    //  * State for deletion.
+    // This function is the entry point for decision making which
+    // expanding complex desire network layout to flat network layout.
+    fn gen_state_for_apply(
+        &self,
+        current: &Self,
+    ) -> Result<(Self, Self, Self), NmstateError> {
+        let mut add_net_state = NetworkState::new();
+        let mut chg_net_state = NetworkState::new();
+        let mut del_net_state = NetworkState::new();
+
+        let (add_ifaces, chg_ifaces, del_ifaces) =
+            self.interfaces.gen_state_for_apply(&current.interfaces)?;
+
+        println!("DEBUG, new interfaces {:?}", add_ifaces);
+        println!("DEBUG, chg interfaces {:?}", chg_ifaces);
+        println!("DEBUG, del interfaces {:?}", del_ifaces);
+
+        add_net_state.interfaces = add_ifaces;
+        add_net_state.prop_list = vec!["interfaces"];
+
+        chg_net_state.interfaces = chg_ifaces;
+        chg_net_state.prop_list = vec!["interfaces"];
+
+        del_net_state.interfaces = del_ifaces;
+        del_net_state.prop_list = vec!["interfaces"];
+
+        Ok((add_net_state, chg_net_state, del_net_state))
     }
 }
 

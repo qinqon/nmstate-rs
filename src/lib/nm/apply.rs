@@ -29,11 +29,13 @@ pub(crate) fn nm_apply(
 
     let ifaces = net_state.interfaces.to_vec();
     for iface in &ifaces {
-        for port_name in iface.ports() {
-            ports.insert(
-                port_name,
-                (iface.name().to_string(), iface.iface_type().clone()),
-            );
+        if let Some(iface_ports) = iface.ports() {
+            for port_name in iface_ports {
+                ports.insert(
+                    port_name.to_string(),
+                    (iface.name().to_string(), iface.iface_type().clone()),
+                );
+            }
         }
     }
     let exist_nm_conns = nm_api
