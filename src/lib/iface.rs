@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     state::get_json_value_difference, BaseInterface, ErrorKind,
-    EthernetInterface, LinuxBridgeInterface, NmstateError,
+    EthernetInterface, LinuxBridgeInterface, NmstateError, VethInterface,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -121,6 +121,7 @@ impl UnknownInterface {
 pub enum Interface {
     LinuxBridge(LinuxBridgeInterface),
     Ethernet(EthernetInterface),
+    Veth(VethInterface),
     Unknown(UnknownInterface),
 }
 
@@ -129,6 +130,7 @@ impl Interface {
         match self {
             Self::LinuxBridge(iface) => iface.base.name.as_str(),
             Self::Ethernet(iface) => iface.base.name.as_str(),
+            Self::Veth(iface) => iface.base.name.as_str(),
             Self::Unknown(iface) => iface.base.name.as_str(),
         }
     }
@@ -145,6 +147,7 @@ impl Interface {
         match self {
             Self::LinuxBridge(iface) => iface.base.iface_type.clone(),
             Self::Ethernet(iface) => iface.base.iface_type.clone(),
+            Self::Veth(iface) => iface.base.iface_type.clone(),
             Self::Unknown(iface) => iface.base.iface_type.clone(),
         }
     }
@@ -161,6 +164,7 @@ impl Interface {
         match self {
             Self::LinuxBridge(iface) => &iface.base,
             Self::Ethernet(iface) => &iface.base,
+            Self::Veth(iface) => &iface.base,
             Self::Unknown(iface) => &iface.base,
         }
     }
@@ -169,6 +173,7 @@ impl Interface {
         match self {
             Self::LinuxBridge(iface) => &mut iface.base,
             Self::Ethernet(iface) => &mut iface.base,
+            Self::Veth(iface) => &mut iface.base,
             Self::Unknown(iface) => &mut iface.base,
         }
     }
@@ -204,6 +209,17 @@ impl Interface {
                     );
                 }
             }
+            Self::Veth(iface) => {
+                if let Self::Veth(other_iface) = other {
+                    iface.update(other_iface);
+                } else {
+                    eprintln!(
+                        "BUG: Don't know how to update veth iface \
+                        with {:?}",
+                        other
+                    );
+                }
+            }
             Self::Unknown(iface) => {
                 if let Self::Unknown(other_iface) = other {
                     iface.update(other_iface);
@@ -224,6 +240,7 @@ impl Interface {
             Self::LinuxBridge(iface) => {
                 iface.base.iface_type = InterfaceType::LinuxBridge
             }
+            Self::Veth(iface) => iface.base.iface_type = InterfaceType::Veth,
             Self::Ethernet(iface) => {
                 iface.base.iface_type = InterfaceType::Ethernet
             }
@@ -237,6 +254,9 @@ impl Interface {
                 iface.pre_verify_cleanup();
             }
             Self::Ethernet(ref mut iface) => {
+                iface.pre_verify_cleanup();
+            }
+            Self::Veth(ref mut iface) => {
                 iface.pre_verify_cleanup();
             }
             Self::Unknown(ref mut iface) => {

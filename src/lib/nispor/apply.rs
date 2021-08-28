@@ -1,4 +1,6 @@
-use crate::{ErrorKind, Interface, InterfaceType, NetworkState, NmstateError};
+use crate::{
+    ErrorKind, Interface, InterfaceType, NetworkState, NmstateError, VethConfig,
+};
 
 pub(crate) fn nispor_apply(
     add_net_state: &NetworkState,
@@ -6,7 +8,6 @@ pub(crate) fn nispor_apply(
     del_net_state: &NetworkState,
 ) -> Result<(), NmstateError> {
     let np_net_conf = net_state_to_nispor(del_net_state)?;
-    println!("{:?}", np_net_conf);
     if let Err(e) = np_net_conf.apply() {
         return Err(NmstateError::new(
             ErrorKind::PluginFailure,
@@ -14,7 +15,6 @@ pub(crate) fn nispor_apply(
         ));
     }
     let np_net_conf = net_state_to_nispor(add_net_state)?;
-    println!("{:?}", np_net_conf);
     if let Err(e) = np_net_conf.apply() {
         return Err(NmstateError::new(
             ErrorKind::PluginFailure,
@@ -22,7 +22,6 @@ pub(crate) fn nispor_apply(
         ));
     }
     let np_net_conf = net_state_to_nispor(chg_net_state)?;
-    println!("{:?}", np_net_conf);
     if let Err(e) = np_net_conf.apply() {
         return Err(NmstateError::new(
             ErrorKind::PluginFailure,
@@ -65,6 +64,7 @@ fn nmstate_iface_type_to_np(
     match nms_iface_type {
         InterfaceType::LinuxBridge => nispor::IfaceType::Bridge,
         InterfaceType::Ethernet => nispor::IfaceType::Ethernet,
+        InterfaceType::Veth => nispor::IfaceType::Veth,
         _ => nispor::IfaceType::Unknown,
     }
 }
@@ -82,5 +82,23 @@ fn nmstate_iface_to_np(
     if let Some(ctrl_name) = &nms_iface.base_iface().controller {
         np_iface.controller = Some(ctrl_name.to_string())
     }
+    match nms_iface {
+        Interface::Veth(veth_iface) => {
+            np_iface.veth = nms_veth_conf_to_np(veth_iface.veth.as_ref());
+        }
+        _ => {}
+    }
     Ok(np_iface)
+}
+
+fn nms_veth_conf_to_np(
+    nms_veth_conf: Option<&VethConfig>,
+) -> Option<nispor::VethConf> {
+    if let Some(nms_veth_conf) = nms_veth_conf {
+        Some(nispor::VethConf {
+            peer: nms_veth_conf.peer.to_string(),
+        })
+    } else {
+        None
+    }
 }

@@ -14,7 +14,7 @@ pub use crate::iface::{
 pub use crate::ifaces::{
     BaseInterface, EthernetInterface, Interfaces, LinuxBridgeConfig,
     LinuxBridgeInterface, LinuxBridgeOptions, LinuxBridgePortConfig,
-    LinuxBridgeStpOptions,
+    LinuxBridgeStpOptions, VethConfig, VethInterface,
 };
 pub use crate::ip::{InterfaceIpAddr, InterfaceIpv4, InterfaceIpv6};
 pub use crate::net_state::NetworkState;

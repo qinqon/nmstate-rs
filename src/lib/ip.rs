@@ -8,7 +8,7 @@ pub struct InterfaceIpv4 {
     pub prop_list: Vec<&'static str>,
     #[serde(default)]
     pub dhcp: bool,
-    #[serde(rename = "address")]
+    #[serde(rename = "address", default)]
     pub addresses: Vec<InterfaceIpAddr>,
 }
 
@@ -58,8 +58,9 @@ pub struct InterfaceIpv6 {
     pub prop_list: Vec<&'static str>,
     #[serde(default)]
     pub dhcp: bool,
+    #[serde(default)]
     pub autoconf: bool,
-    #[serde(rename = "address")]
+    #[serde(rename = "address", default)]
     pub addresses: Vec<InterfaceIpAddr>,
 }
 

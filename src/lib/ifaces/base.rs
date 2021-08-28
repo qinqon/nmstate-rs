@@ -9,6 +9,7 @@ pub struct BaseInterface {
     pub prop_list: Vec<&'static str>,
     #[serde(skip)] // Done by enum tag
     pub iface_type: InterfaceType,
+    #[serde(default = "default_state")]
     pub state: InterfaceState,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub ipv4: Option<InterfaceIpv4>,
@@ -66,4 +67,8 @@ impl BaseInterface {
             ipv6.pre_verify_cleanup()
         }
     }
+}
+
+fn default_state() -> InterfaceState {
+    InterfaceState::Up
 }

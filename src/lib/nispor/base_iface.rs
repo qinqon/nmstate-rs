@@ -16,8 +16,7 @@ fn np_iface_type_to_nmstate(
         nispor::IfaceType::MacVtap => InterfaceType::MacVtap,
         nispor::IfaceType::OpenvSwitch => InterfaceType::OvsInterface,
         nispor::IfaceType::Tun => InterfaceType::Tun,
-        // Do not differentiate veth over ethernet
-        nispor::IfaceType::Veth => InterfaceType::Ethernet,
+        nispor::IfaceType::Veth => InterfaceType::Veth,
         nispor::IfaceType::Vlan => InterfaceType::Vlan,
         nispor::IfaceType::Vrf => InterfaceType::Vrf,
         nispor::IfaceType::Vxlan => InterfaceType::Vxlan,
@@ -42,8 +41,8 @@ pub(crate) fn np_iface_to_base_iface(
         name: np_iface.name.to_string(),
         state: np_iface_state_to_nmstate(&np_iface.state),
         iface_type: np_iface_type_to_nmstate(&np_iface.iface_type),
-        ipv4: np_ipv4_to_nmstate(&np_iface.ipv4),
-        ipv6: np_ipv6_to_nmstate(&np_iface.ipv6),
+        ipv4: np_ipv4_to_nmstate(np_iface),
+        ipv6: np_ipv6_to_nmstate(np_iface),
         ..Default::default()
     };
     base_iface

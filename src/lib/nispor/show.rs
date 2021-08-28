@@ -2,6 +2,7 @@ use crate::{
     nispor::{
         base_iface::np_iface_to_base_iface, error::np_error_to_nmstate,
         ethernet::np_ethernet_to_nmstate, linux_bridge::np_bridge_to_nmstate,
+        veth::np_veth_to_nmstate,
     },
     Interface, InterfaceType, NetworkState, NmstateError, UnknownInterface,
 };
@@ -20,6 +21,9 @@ pub(crate) fn nispor_retrieve() -> Result<NetworkState, NmstateError> {
             InterfaceType::Ethernet => Interface::Ethernet(
                 np_ethernet_to_nmstate(np_iface, base_iface),
             ),
+            InterfaceType::Veth => {
+                Interface::Veth(np_veth_to_nmstate(np_iface, base_iface))
+            }
             _ => Interface::Unknown(UnknownInterface::new(base_iface)),
         };
         net_state.append_interface_data(iface);
