@@ -12,82 +12,24 @@ use crate::{
     LinuxBridgeStpOptions, NetworkState, NmstateError,
 };
 
-// We only adjust timeout timeout for every group of profile addtion.
+// We only adjust timeout for every 20 profile addtions.
 const TIMEOUT_ADJUST_PROFILE_ADDTION_GROUP_SIZE: usize = 20;
 const TIMEOUT_SECONDS_FOR_PROFILE_ADDTION: u32 = 60;
 const TIMEOUT_SECONDS_FOR_PROFILE_ACTIVATION: u32 = 60;
 
 pub(crate) fn nm_apply(
-    net_state: &NetworkState,
+    add_net_state: &NetworkState,
+    chg_net_state: &NetworkState,
+    del_net_state: &NetworkState,
+    _cur_net_state: &NetworkState,
     checkpoint: &str,
 ) -> Result<(), NmstateError> {
     let nm_api = NmApi::new()
         .or_else(|ref nm_error| Err(nm_error_to_nmstate(nm_error)))?;
 
-    let mut nm_conn_uuids: Vec<String> = Vec::new();
-    let mut ports: HashMap<String, (String, InterfaceType)> = HashMap::new();
-
-    let ifaces = net_state.interfaces.to_vec();
-    for iface in &ifaces {
-        if let Some(iface_ports) = iface.ports() {
-            for port_name in iface_ports {
-                ports.insert(
-                    port_name.to_string(),
-                    (iface.name().to_string(), iface.iface_type().clone()),
-                );
-            }
-        }
-    }
-    let exist_nm_conns = nm_api
-        .nm_connections_get()
-        .or_else(|ref nm_error| Err(nm_error_to_nmstate(nm_error)))?;
-    let nm_acs = nm_api
-        .nm_active_connections_get()
-        .or_else(|ref nm_error| Err(nm_error_to_nmstate(nm_error)))?;
-    let nm_ac_uuids: Vec<&str> =
-        nm_acs.iter().map(|nm_ac| &nm_ac.uuid as &str).collect();
-
-    let mut index: usize = 0;
-    for iface in &ifaces {
-        if index % TIMEOUT_ADJUST_PROFILE_ADDTION_GROUP_SIZE
-            == TIMEOUT_ADJUST_PROFILE_ADDTION_GROUP_SIZE - 1
-        {
-            nm_checkpoint_timeout_extend(
-                checkpoint,
-                TIMEOUT_SECONDS_FOR_PROFILE_ADDTION,
-            )?;
-        }
-        index += 1;
-        if iface.iface_type() != InterfaceType::Unknown {
-            let (uuid, nm_conn) = iface_to_nm_connection(
-                iface,
-                &ports,
-                &exist_nm_conns,
-                &nm_ac_uuids,
-            )?;
-            nm_api
-                .connection_add(&nm_conn)
-                .or_else(|ref nm_error| Err(nm_error_to_nmstate(nm_error)))?;
-            delete_exist_profiles(
-                &nm_api,
-                &exist_nm_conns,
-                iface.name(),
-                &iface.iface_type(),
-                &uuid,
-            )?;
-            nm_conn_uuids.push(uuid);
-        }
-    }
-    for nm_conn_uuid in &nm_conn_uuids {
-        nm_checkpoint_timeout_extend(
-            checkpoint,
-            TIMEOUT_SECONDS_FOR_PROFILE_ACTIVATION,
-        )?;
-        nm_api
-            .connection_activate(nm_conn_uuid)
-            .or_else(|ref nm_error| Err(nm_error_to_nmstate(nm_error)))?;
-    }
-
+    apply_single_state(&nm_api, del_net_state, checkpoint)?;
+    apply_single_state(&nm_api, add_net_state, checkpoint)?;
+    apply_single_state(&nm_api, chg_net_state, checkpoint)?;
     Ok(())
 }
 
@@ -97,6 +39,7 @@ fn iface_type_to_nm(
     match iface_type {
         InterfaceType::LinuxBridge => Ok("bridge".into()),
         InterfaceType::Ethernet => Ok("802-3-ethernet".into()),
+        InterfaceType::Veth => Ok("802-3-ethernet".into()),
         _ => Err(NmstateError::new(
             ErrorKind::Bug,
             format!("BUG: NM does not support iface type: {:?}", iface_type),
@@ -106,10 +49,10 @@ fn iface_type_to_nm(
 
 fn iface_to_nm_connection(
     iface: &Interface,
-    ports: &HashMap<String, (String, InterfaceType)>,
     exist_nm_conns: &[NmConnection],
     nm_ac_uuids: &[&str],
 ) -> Result<(String, NmConnection), NmstateError> {
+    println!("HAHA {:?}", iface);
     let base_iface = iface.base_iface();
     let exist_nm_conn = get_exist_profile(
         exist_nm_conns,
@@ -135,19 +78,33 @@ fn iface_to_nm_connection(
         autoconnect_ports: Some(true),
         ..Default::default()
     };
-    if let Some((controler, controler_type)) = ports.get(&base_iface.name) {
-        nm_conn_set.controller = Some(controler.to_string());
-        nm_conn_set.controller_type = Some(iface_type_to_nm(controler_type)?);
+    if let Some(ctrl_name) = &base_iface.controller {
+        if let Some(ctrl_type) = &base_iface.controller_type {
+            nm_conn_set.controller = Some(ctrl_name.to_string());
+            nm_conn_set.controller_type = Some(iface_type_to_nm(ctrl_type)?);
+        }
     }
     let mut nm_conn = NmConnection {
         connection: Some(nm_conn_set),
         ..Default::default()
     };
-    if let Some(iface_ip) = &base_iface.ipv4 {
-        nm_conn.ipv4 = Some(iface_ipv4_to_nm(&iface_ip)?);
-    }
-    if let Some(iface_ip) = &base_iface.ipv6 {
-        nm_conn.ipv6 = Some(iface_ipv6_to_nm(&iface_ip)?);
+    if base_iface.can_have_ip() {
+        if let Some(iface_ip) = &base_iface.ipv4 {
+            nm_conn.ipv4 = Some(iface_ipv4_to_nm(&iface_ip)?);
+        } else {
+            nm_conn.ipv4 = Some(iface_ipv4_to_nm(&InterfaceIpv4 {
+                enabled: false,
+                ..Default::default()
+            })?);
+        }
+        if let Some(iface_ip) = &base_iface.ipv6 {
+            nm_conn.ipv6 = Some(iface_ipv6_to_nm(&iface_ip)?);
+        } else {
+            nm_conn.ipv6 = Some(iface_ipv6_to_nm(&InterfaceIpv6 {
+                enabled: false,
+                ..Default::default()
+            })?);
+        }
     }
     if let Interface::LinuxBridge(br_iface) = iface {
         if let Some(br_conf) = &br_iface.bridge {
@@ -301,4 +258,74 @@ fn get_exist_profile<'a>(
         }
     }
     found_nm_conns.pop()
+}
+
+fn apply_single_state(
+    nm_api: &NmApi,
+    net_state: &NetworkState,
+    checkpoint: &str,
+) -> Result<(), NmstateError> {
+    let mut nm_conn_uuids: Vec<String> = Vec::new();
+    let mut ports: HashMap<String, (String, InterfaceType)> = HashMap::new();
+
+    let exist_nm_conns = nm_api
+        .nm_connections_get()
+        .or_else(|ref nm_error| Err(nm_error_to_nmstate(nm_error)))?;
+    let nm_acs = nm_api
+        .nm_active_connections_get()
+        .or_else(|ref nm_error| Err(nm_error_to_nmstate(nm_error)))?;
+    let nm_ac_uuids: Vec<&str> =
+        nm_acs.iter().map(|nm_ac| &nm_ac.uuid as &str).collect();
+
+    let ifaces = net_state.interfaces.to_vec();
+    for iface in &ifaces {
+        if let Some(iface_ports) = iface.ports() {
+            for port_name in iface_ports {
+                ports.insert(
+                    port_name.to_string(),
+                    (iface.name().to_string(), iface.iface_type().clone()),
+                );
+            }
+        }
+    }
+
+    let mut index: usize = 0;
+    for iface in &ifaces {
+        // Only extend the timeout every
+        // TIMEOUT_ADJUST_PROFILE_ADDTION_GROUP_SIZE profile addition.
+        if index % TIMEOUT_ADJUST_PROFILE_ADDTION_GROUP_SIZE
+            == TIMEOUT_ADJUST_PROFILE_ADDTION_GROUP_SIZE - 1
+        {
+            nm_checkpoint_timeout_extend(
+                checkpoint,
+                TIMEOUT_SECONDS_FOR_PROFILE_ADDTION,
+            )?;
+        }
+        index += 1;
+        if iface.iface_type() != InterfaceType::Unknown {
+            let (uuid, nm_conn) =
+                iface_to_nm_connection(iface, &exist_nm_conns, &nm_ac_uuids)?;
+            nm_api
+                .connection_add(&nm_conn)
+                .or_else(|ref nm_error| Err(nm_error_to_nmstate(nm_error)))?;
+            delete_exist_profiles(
+                &nm_api,
+                &exist_nm_conns,
+                iface.name(),
+                &iface.iface_type(),
+                &uuid,
+            )?;
+            nm_conn_uuids.push(uuid);
+        }
+    }
+    for nm_conn_uuid in &nm_conn_uuids {
+        nm_checkpoint_timeout_extend(
+            checkpoint,
+            TIMEOUT_SECONDS_FOR_PROFILE_ACTIVATION,
+        )?;
+        nm_api
+            .connection_activate(nm_conn_uuid)
+            .or_else(|ref nm_error| Err(nm_error_to_nmstate(nm_error)))?;
+    }
+    Ok(())
 }

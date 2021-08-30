@@ -67,6 +67,10 @@ impl BaseInterface {
             ipv6.pre_verify_cleanup()
         }
     }
+
+    pub fn can_have_ip(&self) -> bool {
+        self.controller == None
+    }
 }
 
 fn default_state() -> InterfaceState {

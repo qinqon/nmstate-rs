@@ -66,9 +66,9 @@ impl NetworkState {
             with_nm_checkpoint(&checkpoint, || {
                 nm_apply(
                     &add_net_state,
-                    //    chg_net_state,
-                    //    del_net_state,
-                    //    cur_net_state,
+                    &chg_net_state,
+                    &del_net_state,
+                    &cur_net_state,
                     &checkpoint,
                 )?;
                 nm_checkpoint_timeout_extend(
