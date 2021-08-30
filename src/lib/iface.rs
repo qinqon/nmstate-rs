@@ -34,7 +34,20 @@ impl Default for InterfaceType {
 impl From<&str> for InterfaceType {
     fn from(s: &str) -> Self {
         match s {
+            "bond" => InterfaceType::Bond,
+            "linux-bridge" => InterfaceType::LinuxBridge,
+            "dummy" => InterfaceType::Dummy,
             "ethernet" => InterfaceType::Ethernet,
+            "loopback" => InterfaceType::Loopback,
+            "macvlan" => InterfaceType::MacVlan,
+            "macvtap" => InterfaceType::MacVtap,
+            "ovs-interface" => InterfaceType::OvsInterface,
+            "tun" => InterfaceType::Tun,
+            "veth" => InterfaceType::Veth,
+            "vlan" => InterfaceType::Vlan,
+            "vrf" => InterfaceType::Vrf,
+            "vxlan" => InterfaceType::Vxlan,
+            "unknown" => InterfaceType::Unknown,
             _ => InterfaceType::Other(s.to_string()),
         }
     }
@@ -113,11 +126,8 @@ impl UnknownInterface {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(tag = "type")]
-// TODO: above line is just for temp use, should use `#[serde(untagged)]`
-// and customerize deserilization.
-#[serde(rename_all = "kebab-case")]
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
+#[serde(rename_all = "kebab-case", tag = "type")]
 pub enum Interface {
     LinuxBridge(LinuxBridgeInterface),
     Ethernet(EthernetInterface),

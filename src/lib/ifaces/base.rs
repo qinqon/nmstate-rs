@@ -15,7 +15,7 @@ pub struct BaseInterface {
     pub ipv4: Option<InterfaceIpv4>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub ipv6: Option<InterfaceIpv6>,
-    #[serde(skip)]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub controller: Option<String>,
     #[serde(skip)]
     pub controller_type: Option<InterfaceType>,

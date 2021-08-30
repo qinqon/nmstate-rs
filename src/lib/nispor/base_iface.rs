@@ -43,6 +43,10 @@ pub(crate) fn np_iface_to_base_iface(
         iface_type: np_iface_type_to_nmstate(&np_iface.iface_type),
         ipv4: np_ipv4_to_nmstate(np_iface),
         ipv6: np_ipv6_to_nmstate(np_iface),
+        controller: np_iface
+            .controller
+            .as_ref()
+            .and_then(|c| Some(c.to_string())),
         ..Default::default()
     };
     base_iface
