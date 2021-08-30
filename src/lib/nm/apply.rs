@@ -52,7 +52,6 @@ fn iface_to_nm_connection(
     exist_nm_conns: &[NmConnection],
     nm_ac_uuids: &[&str],
 ) -> Result<(String, NmConnection), NmstateError> {
-    println!("HAHA {:?}", iface);
     let base_iface = iface.base_iface();
     let exist_nm_conn = get_exist_profile(
         exist_nm_conns,

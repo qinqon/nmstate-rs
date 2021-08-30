@@ -1,5 +1,7 @@
 use crate::{
-    ErrorKind, Interface, InterfaceType, NetworkState, NmstateError, VethConfig,
+    nispor::ip::{nmstate_ipv4_to_np, nmstate_ipv6_to_np},
+    ErrorKind, Interface, InterfaceType, NetworkState, NmstateError,
+    VethConfig,
 };
 
 pub(crate) fn nispor_apply(
@@ -51,7 +53,6 @@ fn net_state_to_nispor(
         }
         np_ifaces.push(nmstate_iface_to_np(&iface, np_iface_type)?);
     }
-    println!("{:?}", &np_ifaces);
 
     Ok(nispor::NetConf {
         ifaces: Some(np_ifaces),
@@ -79,9 +80,15 @@ fn nmstate_iface_to_np(
         state: nispor::IfaceState::Up,
         ..Default::default()
     };
-    if let Some(ctrl_name) = &nms_iface.base_iface().controller {
+    let base_iface = &nms_iface.base_iface();
+    if let Some(ctrl_name) = &base_iface.controller {
         np_iface.controller = Some(ctrl_name.to_string())
     }
+    if base_iface.can_have_ip() {
+        np_iface.ipv4 = Some(nmstate_ipv4_to_np(base_iface.ipv4.as_ref()));
+        np_iface.ipv6 = Some(nmstate_ipv6_to_np(base_iface.ipv6.as_ref()));
+    }
+
     match nms_iface {
         Interface::Veth(veth_iface) => {
             np_iface.veth = nms_veth_conf_to_np(veth_iface.veth.as_ref());

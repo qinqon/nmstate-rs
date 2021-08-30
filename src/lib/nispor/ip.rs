@@ -61,3 +61,33 @@ pub(crate) fn np_ipv6_to_nmstate(
         }
     }
 }
+
+pub(crate) fn nmstate_ipv4_to_np(
+    nms_ipv4: Option<&InterfaceIpv4>,
+) -> nispor::IpConf {
+    let mut np_ip_conf = nispor::IpConf::default();
+    if let Some(nms_ipv4) = nms_ipv4 {
+        for nms_addr in &nms_ipv4.addresses {
+            np_ip_conf.addresses.push(nispor::IpAddrConf {
+                address: nms_addr.ip.to_string(),
+                prefix_len: nms_addr.prefix_length as u8,
+            });
+        }
+    }
+    np_ip_conf
+}
+
+pub(crate) fn nmstate_ipv6_to_np(
+    nms_ipv6: Option<&InterfaceIpv6>,
+) -> nispor::IpConf {
+    let mut np_ip_conf = nispor::IpConf::default();
+    if let Some(nms_ipv6) = nms_ipv6 {
+        for nms_addr in &nms_ipv6.addresses {
+            np_ip_conf.addresses.push(nispor::IpAddrConf {
+                address: nms_addr.ip.to_string(),
+                prefix_len: nms_addr.prefix_length as u8,
+            });
+        }
+    }
+    np_ip_conf
+}
