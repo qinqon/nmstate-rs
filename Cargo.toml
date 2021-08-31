@@ -1,6 +1,7 @@
 [workspace]
 members = [
-    "src/lib",
     "src/cli",
+    "src/clib",
+    "src/lib",
     "src/libnm_dbus",
 ]

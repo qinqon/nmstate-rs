@@ -152,12 +152,12 @@ fn sort_netstate(
 fn show(matches: &clap::ArgMatches) -> Result<String, CliError> {
     let mut net_state = NetworkState::new();
     if matches.is_present("KERNEL") {
-        net_state.kernel_only(true);
+        net_state.set_kernel_only(true);
     }
     net_state.retrieve()?;
     Ok(if let Some(ifname) = matches.value_of("IFNAME") {
         let mut new_net_state = NetworkState::new();
-        new_net_state.kernel_only(matches.is_present("KERNEL"));
+        new_net_state.set_kernel_only(matches.is_present("KERNEL"));
         for iface in net_state.interfaces.to_vec() {
             if iface.name() == ifname {
                 new_net_state.append_interface_data(iface.clone())
@@ -172,7 +172,7 @@ fn show(matches: &clap::ArgMatches) -> Result<String, CliError> {
 fn apply(file_path: &str, kernel_only: bool) -> Result<String, CliError> {
     let fd = std::fs::File::open(file_path)?;
     let mut net_state: NetworkState = serde_yaml::from_reader(fd)?;
-    net_state.kernel_only(kernel_only);
+    net_state.set_kernel_only(kernel_only);
     net_state.apply()?;
     let sorted_net_state = sort_netstate(net_state)?;
     Ok(serde_yaml::to_string(&sorted_net_state)?)

@@ -8,7 +8,7 @@ use crate::{
         nm_apply, nm_checkpoint_create, nm_checkpoint_destroy,
         nm_checkpoint_rollback, nm_checkpoint_timeout_extend, nm_retrieve,
     },
-    Interface, Interfaces, NmstateError,
+    ErrorKind, Interface, Interfaces, NmstateError,
 };
 
 const VERIFY_RETRY_INTERVAL_MILLISECONDS: u64 = 500;
@@ -28,13 +28,25 @@ pub struct NetworkState {
 }
 
 impl NetworkState {
-    pub fn kernel_only(&mut self, value: bool) -> &mut Self {
+    pub fn set_kernel_only(&mut self, value: bool) -> &mut Self {
         self.kernel_only = value;
         self
     }
 
     pub fn new() -> Self {
         Default::default()
+    }
+
+    // We provide this instead asking use to do serde_json::from_str(), so that
+    // we could provide better error NmstateError instead of serde_json one.
+    pub fn new_from_json(net_state_json: &str) -> Result<Self, NmstateError> {
+        match serde_json::from_str(net_state_json) {
+            Ok(s) => Ok(s),
+            Err(e) => Err(NmstateError::new(
+                ErrorKind::InvalidArgument,
+                format!("Invalid json string: {}", e),
+            )),
+        }
     }
 
     pub fn append_interface_data(&mut self, iface: Interface) {
@@ -55,7 +67,7 @@ impl NetworkState {
         let desire_state_to_edit = self.clone();
         let desire_state_to_verify = self.clone();
         let mut cur_net_state = NetworkState::new();
-        cur_net_state.kernel_only(self.kernel_only);
+        cur_net_state.set_kernel_only(self.kernel_only);
         cur_net_state.retrieve()?;
 
         let (add_net_state, chg_net_state, del_net_state) =
