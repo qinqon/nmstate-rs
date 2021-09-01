@@ -3,3 +3,4 @@
 Cargo.lock
 *.swp
 __pycache__
+src/clib/test/nmstate_test
