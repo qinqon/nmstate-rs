@@ -1,6 +1,8 @@
 mod error;
 
 use clap;
+use env_logger::Builder;
+use log::LevelFilter;
 use nmstate::NetworkState;
 use serde::Serialize;
 use serde_yaml::{self, Value};
@@ -17,6 +19,12 @@ fn main() {
         .author("Gris Ge <fge@redhat.com>")
         .about("Command line of nmstate")
         .setting(clap::AppSettings::SubcommandRequired)
+        .arg(
+            clap::Arg::with_name("verbose")
+                .short("v")
+                .multiple(true)
+                .help("Set verbose level"),
+        )
         .subcommand(
             clap::SubCommand::with_name(SUB_CMD_SHOW)
                 .about("Show network state")
@@ -61,6 +69,18 @@ fn main() {
                 ),
         )
         .get_matches();
+    let (log_module_filter, log_level) = match matches.occurrences_of("verbose")
+    {
+        0 => (Some("nmstate"), LevelFilter::Warn),
+        1 => (Some("nmstate"), LevelFilter::Info),
+        2 => (Some("nmstate"), LevelFilter::Debug),
+        3 | _ => (None, LevelFilter::Debug),
+    };
+
+    let mut log_builder = Builder::new();
+    log_builder.filter(log_module_filter, log_level);
+    log_builder.init();
+
     if let Some(matches) = matches.subcommand_matches(SUB_CMD_GEN_CONF) {
         if let Some(file_path) = matches.value_of("STATE_FILE") {
             print_result_and_exit(gen_conf(&file_path));

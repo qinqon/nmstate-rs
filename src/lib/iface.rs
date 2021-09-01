@@ -1,3 +1,4 @@
+use log::warn;
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -201,8 +202,8 @@ impl Interface {
                 if let Self::LinuxBridge(other_iface) = other {
                     iface.update(other_iface);
                 } else {
-                    eprintln!(
-                        "BUG: Don't know how to update linux bridge iface \
+                    warn!(
+                        "Don't know how to update linux bridge iface \
                         with {:?}",
                         other
                     );
@@ -212,8 +213,8 @@ impl Interface {
                 if let Self::Ethernet(other_iface) = other {
                     iface.update(other_iface);
                 } else {
-                    eprintln!(
-                        "BUG: Don't know how to update ethernet iface \
+                    warn!(
+                        "Don't know how to update ethernet iface \
                         with {:?}",
                         other
                     );
@@ -223,7 +224,7 @@ impl Interface {
                 if let Self::Veth(other_iface) = other {
                     iface.update(other_iface);
                 } else {
-                    eprintln!(
+                    warn!(
                         "BUG: Don't know how to update veth iface \
                         with {:?}",
                         other
@@ -234,7 +235,7 @@ impl Interface {
                 if let Self::Unknown(other_iface) = other {
                     iface.update(other_iface);
                 } else {
-                    eprintln!(
+                    warn!(
                         "BUG: Don't know how to update unknown iface \
                         with {:?}",
                         other

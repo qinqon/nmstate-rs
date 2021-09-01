@@ -1,5 +1,7 @@
 use std::collections::HashMap;
 
+use log::warn;
+
 use nm_dbus::{
     NmApi, NmConnection, NmSettingBridge, NmSettingConnection, NmSettingIp,
     NmSettingIpMethod,
@@ -39,6 +41,8 @@ fn iface_type_to_nm(
     match iface_type {
         InterfaceType::LinuxBridge => Ok("bridge".into()),
         InterfaceType::Ethernet => Ok("802-3-ethernet".into()),
+        // TODO: top level code should change the interface type to
+        // ethernet if no veth peer defined.
         InterfaceType::Veth => Ok("802-3-ethernet".into()),
         _ => Err(NmstateError::new(
             ErrorKind::Bug,
@@ -206,9 +210,10 @@ fn nm_connection_matches(
     let nm_iface_type = match iface_type_to_nm(iface_type) {
         Ok(i) => i,
         Err(e) => {
-            eprintln!(
-                "BUG: nm_connection_matches {:?}, {}, {:?}: {}",
-                nm_conn, iface_name, iface_type, e
+            warn!(
+                "Failed to convert iface_type {:?} to network \
+                manager type: {}",
+                iface_type, e
             );
             return false;
         }

@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use log::{debug, info, warn};
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -149,9 +150,9 @@ impl NetworkState {
         let (add_ifaces, chg_ifaces, del_ifaces) =
             self.interfaces.gen_state_for_apply(&current.interfaces)?;
 
-        println!("DEBUG, new interfaces {:?}", add_ifaces);
-        println!("DEBUG, chg interfaces {:?}", chg_ifaces);
-        println!("DEBUG, del interfaces {:?}", del_ifaces);
+        debug!("DEBUG, new interfaces {:?}", add_ifaces);
+        debug!("DEBUG, chg interfaces {:?}", chg_ifaces);
+        debug!("DEBUG, del interfaces {:?}", del_ifaces);
 
         add_net_state.interfaces = add_ifaces;
         add_net_state.prop_list = vec!["interfaces"];
@@ -174,7 +175,7 @@ where
         Ok(()) => nm_checkpoint_destroy(&checkpoint),
         Err(e) => {
             if let Err(e) = nm_checkpoint_rollback(&checkpoint) {
-                eprintln!("nm_checkpoint_rollback() failed: {}", e);
+                warn!("nm_checkpoint_rollback() failed: {}", e);
             }
             Err(e)
         }
@@ -195,7 +196,7 @@ where
             if cur_count == count - 1 {
                 return Err(e);
             } else {
-                eprintln!("Retrying on verification failure: {}", e);
+                info!("Retrying on verification failure: {}", e);
                 std::thread::sleep(std::time::Duration::from_millis(
                     interval_ms,
                 ));

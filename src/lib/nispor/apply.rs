@@ -1,3 +1,5 @@
+use log::warn;
+
 use crate::{
     nispor::ip::{nmstate_ipv4_to_np, nmstate_ipv6_to_np},
     ErrorKind, Interface, InterfaceType, NetworkState, NmstateError,
@@ -9,27 +11,9 @@ pub(crate) fn nispor_apply(
     chg_net_state: &NetworkState,
     del_net_state: &NetworkState,
 ) -> Result<(), NmstateError> {
-    let np_net_conf = net_state_to_nispor(del_net_state)?;
-    if let Err(e) = np_net_conf.apply() {
-        return Err(NmstateError::new(
-            ErrorKind::PluginFailure,
-            format!("Unknown error from nipsor plugin: {}", e),
-        ));
-    }
-    let np_net_conf = net_state_to_nispor(add_net_state)?;
-    if let Err(e) = np_net_conf.apply() {
-        return Err(NmstateError::new(
-            ErrorKind::PluginFailure,
-            format!("Unknown error from nipsor plugin: {}", e),
-        ));
-    }
-    let np_net_conf = net_state_to_nispor(chg_net_state)?;
-    if let Err(e) = np_net_conf.apply() {
-        return Err(NmstateError::new(
-            ErrorKind::PluginFailure,
-            format!("Unknown error from nipsor plugin: {}", e),
-        ));
-    }
+    apply_single_state(del_net_state)?;
+    apply_single_state(add_net_state)?;
+    apply_single_state(chg_net_state)?;
     Ok(())
 }
 
@@ -44,8 +28,8 @@ fn net_state_to_nispor(
         }
         let np_iface_type = nmstate_iface_type_to_np(&iface.iface_type());
         if np_iface_type == nispor::IfaceType::Unknown {
-            eprintln!(
-                "ERROR: Unknown interface type {} for interface {}",
+            warn!(
+                "Unknown interface type {} for interface {}",
                 iface.iface_type(),
                 iface.name()
             );
@@ -107,5 +91,17 @@ fn nms_veth_conf_to_np(
         })
     } else {
         None
+    }
+}
+
+fn apply_single_state(net_state: &NetworkState) -> Result<(), NmstateError> {
+    let np_net_conf = net_state_to_nispor(net_state)?;
+    if let Err(e) = np_net_conf.apply() {
+        return Err(NmstateError::new(
+            ErrorKind::PluginFailure,
+            format!("Unknown error from nipsor plugin: {}, {}", e.kind, e.msg),
+        ));
+    } else {
+        Ok(())
     }
 }

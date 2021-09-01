@@ -1,10 +1,10 @@
+use log::warn;
 use nm_dbus::{NmApi, NmConnection, NmSettingIp, NmSettingIpMethod};
 
 use crate::{
     nm::error::nm_error_to_nmstate, BaseInterface, EthernetInterface,
     Interface, InterfaceIpv4, InterfaceIpv6, InterfaceState, InterfaceType,
-    LinuxBridgeInterface, NetworkState, NmstateError,
-    UnknownInterface
+    LinuxBridgeInterface, NetworkState, NmstateError, UnknownInterface,
 };
 
 const NM_SETTING_BRIDGE_SETTING_NAME: &str = "bridge";
@@ -85,7 +85,7 @@ fn nm_ip_setting_to_nmstate4(nm_ip_setting: &NmSettingIp) -> InterfaceIpv4 {
             | NmSettingIpMethod::Shared => (true, false),
             NmSettingIpMethod::Auto => (true, true),
             _ => {
-                eprintln!("WARN: Unexpected NM IP method {:?}", nm_ip_method);
+                warn!("Unexpected NM IP method {:?}", nm_ip_method);
                 (true, false)
             }
         };
