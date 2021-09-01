@@ -74,7 +74,7 @@ fn main() {
         0 => (Some("nmstate"), LevelFilter::Warn),
         1 => (Some("nmstate"), LevelFilter::Info),
         2 => (Some("nmstate"), LevelFilter::Debug),
-        3 | _ => (None, LevelFilter::Debug),
+        _ => (None, LevelFilter::Debug),
     };
 
     let mut log_builder = Builder::new();
