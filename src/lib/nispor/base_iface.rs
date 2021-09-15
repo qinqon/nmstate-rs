@@ -43,6 +43,7 @@ pub(crate) fn np_iface_to_base_iface(
         iface_type: np_iface_type_to_nmstate(&np_iface.iface_type),
         ipv4: np_ipv4_to_nmstate(np_iface),
         ipv6: np_ipv6_to_nmstate(np_iface),
+        mac_address: Some(np_iface.mac_address.to_string()),
         controller: np_iface
             .controller
             .as_ref()

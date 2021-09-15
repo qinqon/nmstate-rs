@@ -73,6 +73,8 @@ fn nmstate_iface_to_np(
         np_iface.ipv6 = Some(nmstate_ipv6_to_np(base_iface.ipv6.as_ref()));
     }
 
+    np_iface.mac_address = base_iface.mac_address.clone();
+
     match nms_iface {
         Interface::Veth(veth_iface) => {
             np_iface.veth = nms_veth_conf_to_np(veth_iface.veth.as_ref());

@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use log::{debug, info, warn};
+use log::{debug, warn};
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -196,7 +196,7 @@ where
             if cur_count == count - 1 {
                 return Err(e);
             } else {
-                info!("Retrying on verification failure: {}", e);
+                warn!("Retrying on verification failure: {}", e);
                 std::thread::sleep(std::time::Duration::from_millis(
                     interval_ms,
                 ));
