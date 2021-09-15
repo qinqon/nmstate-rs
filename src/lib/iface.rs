@@ -1,5 +1,5 @@
 use log::warn;
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize};
 
 use crate::{
     state::get_json_value_difference, BaseInterface, ErrorKind,
@@ -110,11 +110,13 @@ impl From<&str> for InterfaceState {
 pub struct UnknownInterface {
     #[serde(flatten)]
     pub base: BaseInterface,
+    #[serde(flatten)]
+    pub other: serde_json::Map<String, serde_json::Value>,
 }
 
 impl UnknownInterface {
     pub fn new(base: BaseInterface) -> Self {
-        Self { base }
+        Self { base, other: serde_json::Map::new() }
     }
 
     pub(crate) fn update(&mut self, other_iface: &UnknownInterface) {
@@ -127,13 +129,52 @@ impl UnknownInterface {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
-#[serde(rename_all = "kebab-case", tag = "type")]
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[serde(rename_all = "kebab-case", untagged)]
 pub enum Interface {
     LinuxBridge(LinuxBridgeInterface),
     Ethernet(EthernetInterface),
     Veth(VethInterface),
     Unknown(UnknownInterface),
+}
+
+impl<'de> Deserialize<'de> for Interface {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let v = serde_json::Value::deserialize(deserializer)?;
+        match Option::deserialize(&v["type"])
+            .map_err(serde::de::Error::custom)?
+        {
+            Some(InterfaceType::Ethernet) => {
+                let inner = EthernetInterface::deserialize(v)
+                    .map_err(serde::de::Error::custom)?;
+                Ok(Interface::Ethernet(inner))
+            }
+            Some(InterfaceType::LinuxBridge) => {
+                let inner = LinuxBridgeInterface::deserialize(v)
+                    .map_err(serde::de::Error::custom)?;
+                Ok(Interface::LinuxBridge(inner))
+            }
+            Some(InterfaceType::Veth) => {
+                let inner = VethInterface::deserialize(v)
+                    .map_err(serde::de::Error::custom)?;
+                Ok(Interface::Veth(inner))
+            }
+            Some(iface_type) => {
+                warn!("Unsupported interface type {}", iface_type);
+                let inner = UnknownInterface::deserialize(v)
+                    .map_err(serde::de::Error::custom)?;
+                Ok(Interface::Unknown(inner))
+            }
+            None => {
+                let inner = UnknownInterface::deserialize(v)
+                    .map_err(serde::de::Error::custom)?;
+                Ok(Interface::Unknown(inner))
+            }
+        }
+    }
 }
 
 impl Interface {
@@ -242,20 +283,6 @@ impl Interface {
                     );
                 }
             }
-        }
-    }
-
-    // TODO: This is not required if we create our own Deserializer.
-    pub(crate) fn tidy_up(&mut self) {
-        match self {
-            Self::LinuxBridge(iface) => {
-                iface.base.iface_type = InterfaceType::LinuxBridge
-            }
-            Self::Veth(iface) => iface.base.iface_type = InterfaceType::Veth,
-            Self::Ethernet(iface) => {
-                iface.base.iface_type = InterfaceType::Ethernet
-            }
-            _ => (),
         }
     }
 

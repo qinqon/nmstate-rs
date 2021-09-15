@@ -1,15 +1,18 @@
 use std::collections::{hash_map::Entry, HashMap, HashSet};
 
+use log::warn;
 use serde::{
     ser::SerializeSeq, Deserialize, Deserializer, Serialize, Serializer,
 };
 
-use crate::{ErrorKind, Interface, InterfaceType, NmstateError};
+use crate::{
+    ErrorKind, Interface, InterfaceState, InterfaceType, NmstateError,
+};
 
 #[derive(Clone, Debug, Default)]
 pub struct Interfaces {
-    kernel_ifaces: HashMap<String, Interface>,
-    user_ifaces: HashMap<(String, InterfaceType), Interface>,
+    pub(crate) kernel_ifaces: HashMap<String, Interface>,
+    pub(crate) user_ifaces: HashMap<(String, InterfaceType), Interface>,
 }
 
 impl<'de> Deserialize<'de> for Interfaces {
@@ -18,11 +21,8 @@ impl<'de> Deserialize<'de> for Interfaces {
         D: Deserializer<'de>,
     {
         let mut ret = Self::new();
-        let mut ifaces =
+        let ifaces =
             <Vec<Interface> as Deserialize>::deserialize(deserializer)?;
-        for iface in &mut ifaces {
-            iface.tidy_up();
-        }
         for iface in ifaces {
             ret.push(iface)
         }
@@ -99,14 +99,16 @@ impl Interfaces {
             {
                 iface.verify(cur_iface)?;
             } else {
-                return Err(NmstateError::new(
-                    ErrorKind::VerificationError,
-                    format!(
-                        "Failed to find desired interface {} {:?}",
-                        iface.name(),
-                        iface.iface_type()
-                    ),
-                ));
+                if iface.base_iface().state != InterfaceState::Absent {
+                    return Err(NmstateError::new(
+                        ErrorKind::VerificationError,
+                        format!(
+                            "Failed to find desired interface {} {:?}",
+                            iface.name(),
+                            iface.iface_type()
+                        ),
+                    ));
+                }
             }
         }
         Ok(())
@@ -136,7 +138,22 @@ impl Interfaces {
             } else {
                 if let Some(cur_iface) = current.kernel_ifaces.get(iface.name())
                 {
-                    del_ifaces.push(cur_iface.clone());
+                    if iface.iface_type() != InterfaceType::Unknown
+                        && iface.iface_type() != cur_iface.iface_type()
+                    {
+                        warn!(
+                            "Interface {} in desire state has different \
+                            interface type '{}' than current status '{}'",
+                            iface.name(),
+                            iface.iface_type(),
+                            cur_iface.iface_type()
+                        );
+                    } else {
+                        let mut del_iface = cur_iface.clone();
+                        del_iface.base_iface_mut().state =
+                            InterfaceState::Absent;
+                        del_ifaces.push(del_iface);
+                    }
                 }
             }
         }

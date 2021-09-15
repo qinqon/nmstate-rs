@@ -102,7 +102,12 @@ impl NetworkState {
             })
         } else {
             // TODO: Need checkpoint for kernel only mode
-            nispor_apply(&add_net_state, &chg_net_state, &del_net_state)?;
+            nispor_apply(
+                &add_net_state,
+                &chg_net_state,
+                &del_net_state,
+                &cur_net_state,
+            )?;
             with_retry(
                 VERIFY_RETRY_INTERVAL_MILLISECONDS,
                 VERIFY_RETRY_COUNT,
