@@ -14,6 +14,7 @@ use crate::{
 
 const VERIFY_RETRY_INTERVAL_MILLISECONDS: u64 = 500;
 const VERIFY_RETRY_COUNT: usize = 60;
+const VERIFY_RETRY_COUNT_KERNEL_MODE: usize = 6;
 
 #[derive(Clone, Debug, Serialize, Deserialize, Default)]
 pub struct NetworkState {
@@ -110,7 +111,7 @@ impl NetworkState {
             )?;
             with_retry(
                 VERIFY_RETRY_INTERVAL_MILLISECONDS,
-                VERIFY_RETRY_COUNT,
+                VERIFY_RETRY_COUNT_KERNEL_MODE,
                 || {
                     let mut new_cur_net_state = cur_net_state.clone();
                     new_cur_net_state.retrieve()?;
