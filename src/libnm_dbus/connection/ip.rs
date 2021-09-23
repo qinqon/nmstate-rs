@@ -65,7 +65,7 @@ impl TryFrom<&str> for NmSettingIpMethod {
         match value {
             "auto" => Ok(Self::Auto),
             "disabled" => Ok(Self::Disabled),
-            "link_local" => Ok(Self::LinkLocal),
+            "link-local" => Ok(Self::LinkLocal),
             "manual" => Ok(Self::Manual),
             "shared" => Ok(Self::Shared),
             "dhcp" => Ok(Self::Dhcp),
