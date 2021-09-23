@@ -8,7 +8,7 @@ pub struct BaseInterface {
     pub name: String,
     #[serde(skip)]
     pub prop_list: Vec<&'static str>,
-    #[serde(skip)] // Done by enum tag
+    #[serde(rename = "type")]
     pub iface_type: InterfaceType,
     #[serde(default = "default_state")]
     pub state: InterfaceState,
