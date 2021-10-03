@@ -8,7 +8,7 @@ pub struct BaseInterface {
     pub name: String,
     #[serde(skip)]
     pub prop_list: Vec<&'static str>,
-    #[serde(rename = "type")]
+    #[serde(rename = "type", default = "default_iface_type")]
     pub iface_type: InterfaceType,
     #[serde(default = "default_state")]
     pub state: InterfaceState,
@@ -78,4 +78,8 @@ impl BaseInterface {
 
 fn default_state() -> InterfaceState {
     InterfaceState::Up
+}
+
+fn default_iface_type() -> InterfaceType {
+    InterfaceType::Unknown
 }

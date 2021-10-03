@@ -34,7 +34,7 @@ fn net_state_to_nispor(
                 );
                 continue;
             }
-            np_ifaces.push(nmstate_iface_to_np(&iface, np_iface_type)?);
+            np_ifaces.push(nmstate_iface_to_np(iface, np_iface_type)?);
         } else if iface.is_absent() {
             np_ifaces.push(nispor::IfaceConf {
                 name: iface.name().to_string(),
@@ -82,25 +82,19 @@ fn nmstate_iface_to_np(
 
     np_iface.mac_address = base_iface.mac_address.clone();
 
-    match nms_iface {
-        Interface::Veth(veth_iface) => {
-            np_iface.veth = nms_veth_conf_to_np(veth_iface.veth.as_ref());
-        }
-        _ => {}
+    if let Interface::Veth(veth_iface) = nms_iface {
+        np_iface.veth = nms_veth_conf_to_np(veth_iface.veth.as_ref());
     }
+
     Ok(np_iface)
 }
 
 fn nms_veth_conf_to_np(
     nms_veth_conf: Option<&VethConfig>,
 ) -> Option<nispor::VethConf> {
-    if let Some(nms_veth_conf) = nms_veth_conf {
-        Some(nispor::VethConf {
-            peer: nms_veth_conf.peer.to_string(),
-        })
-    } else {
-        None
-    }
+    nms_veth_conf.map(|nms_veth_conf| nispor::VethConf {
+        peer: nms_veth_conf.peer.to_string(),
+    })
 }
 
 fn apply_single_state(net_state: &NetworkState) -> Result<(), NmstateError> {

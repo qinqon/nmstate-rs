@@ -7,7 +7,8 @@ use crate::{
     nispor::{nispor_apply, nispor_retrieve},
     nm::{
         nm_apply, nm_checkpoint_create, nm_checkpoint_destroy,
-        nm_checkpoint_rollback, nm_checkpoint_timeout_extend, nm_retrieve,
+        nm_checkpoint_rollback, nm_checkpoint_timeout_extend, nm_gen_conf,
+        nm_retrieve,
     },
     ErrorKind, Interface, Interfaces, NmstateError,
 };
@@ -132,7 +133,10 @@ impl NetworkState {
     pub fn gen_conf(
         &self,
     ) -> Result<HashMap<String, Vec<String>>, NmstateError> {
-        todo!()
+        let mut ret = HashMap::new();
+        let (add_net_state, _, _) = self.gen_state_for_apply(&Self::new())?;
+        ret.insert("NetworkManager".to_string(), nm_gen_conf(&add_net_state)?);
+        Ok(ret)
     }
 
     fn verify(&self, current: &Self) -> Result<(), NmstateError> {
@@ -178,9 +182,9 @@ where
     T: FnOnce() -> Result<(), NmstateError>,
 {
     match func() {
-        Ok(()) => nm_checkpoint_destroy(&checkpoint),
+        Ok(()) => nm_checkpoint_destroy(checkpoint),
         Err(e) => {
-            if let Err(e) = nm_checkpoint_rollback(&checkpoint) {
+            if let Err(e) = nm_checkpoint_rollback(checkpoint) {
                 warn!("nm_checkpoint_rollback() failed: {}", e);
             }
             Err(e)

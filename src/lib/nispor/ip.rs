@@ -5,7 +5,7 @@ pub(crate) fn np_ipv4_to_nmstate(
 ) -> Option<InterfaceIpv4> {
     if let Some(np_ip) = &np_iface.ipv4 {
         let mut ip = InterfaceIpv4::default();
-        if np_ip.addresses.len() > 0 {
+        if !np_ip.addresses.is_empty() {
             ip.enabled = true;
         }
         for np_addr in &np_ip.addresses {
@@ -36,7 +36,7 @@ pub(crate) fn np_ipv6_to_nmstate(
 ) -> Option<InterfaceIpv6> {
     if let Some(np_ip) = &np_iface.ipv6 {
         let mut ip = InterfaceIpv6::default();
-        if np_ip.addresses.len() > 0 {
+        if !np_ip.addresses.is_empty() {
             ip.enabled = true;
         }
         for np_addr in &np_ip.addresses {

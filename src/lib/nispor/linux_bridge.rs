@@ -12,9 +12,7 @@ pub(crate) fn np_bridge_to_nmstate(
         bridge: Some(LinuxBridgeConfig {
             port: Some(np_bridge_ports_to_nmstate(&np_iface)),
             options: Some(np_bridge_options_to_nmstate(&np_iface)),
-            ..Default::default()
         }),
-        ..Default::default()
     }
 }
 

@@ -12,11 +12,12 @@ const NM_SETTING_WIRED_SETTING_NAME: &str = "802-3-ethernet";
 
 pub(crate) fn nm_retrieve() -> Result<NetworkState, NmstateError> {
     let mut net_state = NetworkState::new();
-    let nm_api = NmApi::new()
-        .or_else(|ref nm_error| Err(nm_error_to_nmstate(nm_error)))?;
+    let nm_api =
+        NmApi::new().map_err(|ref nm_error| nm_error_to_nmstate(nm_error))?;
     let nm_conns = nm_api
         .nm_applied_connections_get()
-        .or_else(|ref nm_error| Err(nm_error_to_nmstate(nm_error)))?;
+        .map_err(|ref nm_error| nm_error_to_nmstate(nm_error))?;
+
     for nm_conn in nm_conns {
         if let Some(base_iface) = nm_conn_to_base_iface(&nm_conn) {
             let iface = match &base_iface.iface_type {
@@ -51,29 +52,25 @@ fn nm_iface_type_to_nmstate(nm_iface_type: &str) -> InterfaceType {
 fn nm_conn_to_base_iface(nm_conn: &NmConnection) -> Option<BaseInterface> {
     if let Some(iface_name) = nm_conn.iface_name() {
         if let Some(iface_type) = nm_conn.iface_type() {
-            let ipv4 = if let Some(ref nm_ipv4_setting) = nm_conn.ipv4 {
-                Some(nm_ip_setting_to_nmstate4(nm_ipv4_setting))
-            } else {
-                None
-            };
-            let ipv6 = if let Some(ref nm_ipv6_setting) = nm_conn.ipv6 {
-                Some(nm_ip_setting_to_nmstate6(nm_ipv6_setting))
-            } else {
-                None
-            };
+            let ipv4 = nm_conn.ipv4.as_ref().map(|nm_ipv4_setting| {
+                nm_ip_setting_to_nmstate4(nm_ipv4_setting)
+            });
+            let ipv6 = nm_conn.ipv6.as_ref().map(|nm_ipv6_setting| {
+                nm_ip_setting_to_nmstate6(nm_ipv6_setting)
+            });
 
             return Some(BaseInterface {
                 name: iface_name.to_string(),
                 prop_list: vec!["name", "state", "iface_type", "ipv4", "ipv6"],
                 state: InterfaceState::Up,
                 iface_type: nm_iface_type_to_nmstate(iface_type),
-                ipv4: ipv4,
-                ipv6: ipv6,
+                ipv4,
+                ipv6,
                 ..Default::default()
             });
         }
     }
-    return None;
+    None
 }
 
 fn nm_ip_setting_to_nmstate4(nm_ip_setting: &NmSettingIp) -> InterfaceIpv4 {

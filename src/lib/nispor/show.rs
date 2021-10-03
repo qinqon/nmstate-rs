@@ -13,7 +13,8 @@ pub(crate) fn nispor_retrieve() -> Result<NetworkState, NmstateError> {
     let mut net_state = NetworkState::new();
     net_state.prop_list.push("interfaces");
     let mut np_state = nispor::NetState::retrieve()
-        .or_else(|ref np_error| Err(np_error_to_nmstate(np_error)))?;
+        .map_err(|ref np_error| np_error_to_nmstate(np_error))?;
+
     for (_, np_iface) in np_state.ifaces.drain() {
         debug!(
             "Got nispor interface name {} type {:?}",

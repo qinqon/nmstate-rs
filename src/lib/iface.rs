@@ -116,7 +116,10 @@ pub struct UnknownInterface {
 
 impl UnknownInterface {
     pub fn new(base: BaseInterface) -> Self {
-        Self { base, other: serde_json::Map::new() }
+        Self {
+            base,
+            other: serde_json::Map::new(),
+        }
     }
 
     pub(crate) fn update(&mut self, other_iface: &UnknownInterface) {
@@ -327,6 +330,9 @@ impl Interface {
     }
 }
 
+// The default on enum is experimental, but clippy is suggestion we use
+// that experimental derive. Suppress the warning there
+#[allow(clippy::derivable_impls)]
 impl Default for Interface {
     fn default() -> Self {
         Interface::Unknown(UnknownInterface::default())

@@ -32,7 +32,7 @@ impl std::fmt::Display for ErrorKind {
 pub struct NmError {
     pub kind: ErrorKind,
     pub msg: String,
-    pub(crate) dbus_error: Option<zbus::Error>,
+    pub dbus_error: Option<zbus::Error>,
 }
 
 impl NmError {

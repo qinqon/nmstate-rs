@@ -94,7 +94,7 @@ impl<'a> NmApi<'a> {
         let nm_devs = self.dbus.nm_dev_obj_paths_get()?;
         for nm_dev in &nm_devs {
             nm_conns.push(
-                match self.dbus.nm_dev_applied_connection_get(&nm_dev) {
+                match self.dbus.nm_dev_applied_connection_get(nm_dev) {
                     Ok(n) => NmConnection::try_from(n)?,
                     Err(_) => {
                         continue;
@@ -109,7 +109,7 @@ impl<'a> NmApi<'a> {
         &self,
         nm_conn: &NmConnection,
     ) -> Result<(), NmError> {
-        if let &NmConnection {
+        if let NmConnection {
             connection:
                 Some(NmSettingConnection {
                     uuid: Some(ref uuid),
@@ -136,14 +136,14 @@ impl<'a> NmApi<'a> {
 
     pub fn connection_reapply(&self, uuid: &str) -> Result<(), NmError> {
         let nm_conn = self.nm_connection_get(uuid)?;
-        if let &NmConnection {
+        if let NmConnection {
             connection:
                 Some(NmSettingConnection {
                     iface_name: Some(ref iface_name),
                     ..
                 }),
             ..
-        } = &nm_conn
+        } = nm_conn
         {
             let nm_dev_obj_path = self.dbus.nm_dev_obj_path_get(iface_name)?;
             self.dbus.nm_dev_reapply(&nm_dev_obj_path, &nm_conn)
@@ -171,7 +171,6 @@ impl<'a> NmApi<'a> {
         for nm_ac_obj_path in nm_ac_obj_paths {
             nm_acs.push(NmActiveConnection {
                 uuid: self.dbus.nm_ac_obj_path_uuid_get(&nm_ac_obj_path)?,
-                ..Default::default()
             });
         }
         Ok(nm_acs)

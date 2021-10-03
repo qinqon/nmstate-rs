@@ -6,7 +6,7 @@ pub(crate) fn np_veth_to_nmstate(
 ) -> VethInterface {
     let veth_conf = match np_iface.veth {
         Some(np_veth_info) => Some(VethConfig {
-            peer: np_veth_info.peer.to_string(),
+            peer: np_veth_info.peer,
         }),
         None => None,
     };

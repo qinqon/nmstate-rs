@@ -31,7 +31,7 @@ impl VethInterface {
     pub(crate) fn update(&mut self, other_iface: &VethInterface) {
         // TODO: this should be done by Trait
         self.base.update(&other_iface.base);
-        if let Some(_) = other_iface.veth {
+        if other_iface.veth.is_some() {
             self.veth = other_iface.veth.clone();
         }
     }

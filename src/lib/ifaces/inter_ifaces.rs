@@ -98,17 +98,15 @@ impl Interfaces {
                 current_ifaces.kernel_ifaces.get(iface.name())
             {
                 iface.verify(cur_iface)?;
-            } else {
-                if iface.base_iface().state != InterfaceState::Absent {
-                    return Err(NmstateError::new(
-                        ErrorKind::VerificationError,
-                        format!(
-                            "Failed to find desired interface {} {:?}",
-                            iface.name(),
-                            iface.iface_type()
-                        ),
-                    ));
-                }
+            } else if iface.base_iface().state != InterfaceState::Absent {
+                return Err(NmstateError::new(
+                    ErrorKind::VerificationError,
+                    format!(
+                        "Failed to find desired interface {} {:?}",
+                        iface.name(),
+                        iface.iface_type()
+                    ),
+                ));
             }
         }
         Ok(())
@@ -135,30 +133,28 @@ impl Interfaces {
                         add_ifaces.push(new_iface);
                     }
                 }
-            } else {
-                if let Some(cur_iface) = current.kernel_ifaces.get(iface.name())
+            } else if let Some(cur_iface) =
+                current.kernel_ifaces.get(iface.name())
+            {
+                if iface.iface_type() != InterfaceType::Unknown
+                    && iface.iface_type() != cur_iface.iface_type()
                 {
-                    if iface.iface_type() != InterfaceType::Unknown
-                        && iface.iface_type() != cur_iface.iface_type()
-                    {
-                        warn!(
-                            "Interface {} in desire state has different \
+                    warn!(
+                        "Interface {} in desire state has different \
                             interface type '{}' than current status '{}'",
-                            iface.name(),
-                            iface.iface_type(),
-                            cur_iface.iface_type()
-                        );
-                    } else {
-                        let mut del_iface = cur_iface.clone();
-                        del_iface.base_iface_mut().state =
-                            InterfaceState::Absent;
-                        del_ifaces.push(del_iface);
-                    }
+                        iface.name(),
+                        iface.iface_type(),
+                        cur_iface.iface_type()
+                    );
+                } else {
+                    let mut del_iface = cur_iface.clone();
+                    del_iface.base_iface_mut().state = InterfaceState::Absent;
+                    del_ifaces.push(del_iface);
                 }
             }
         }
 
-        handle_changed_ports(&mut add_ifaces, &mut chg_ifaces, &current)?;
+        handle_changed_ports(&mut add_ifaces, &mut chg_ifaces, current)?;
 
         //
         // * Set priority to interface base on their child/parent or
@@ -181,17 +177,10 @@ fn handle_changed_ports(
     for iface in add_ifaces.to_vec() {
         if let Some(port_names) = iface.ports() {
             for port_name in port_names {
-                if cur_ifaces.kernel_ifaces.contains_key(port_name) {
-                    changed_ports_to_ctrl.insert(
-                        port_name.to_string(),
-                        (iface.name().to_string(), iface.iface_type()),
-                    );
-                } else {
-                    // TODO: The port might be also new interface.
-                    // Currently we trust verification found the missing
-                    // undefined port, but we should raise InvalidArgument
-                    // error.
-                }
+                changed_ports_to_ctrl.insert(
+                    port_name.to_string(),
+                    (iface.name().to_string(), iface.iface_type()),
+                );
             }
         }
     }
@@ -288,21 +277,19 @@ fn handle_changed_ports(
                     v.insert(iface);
                 }
             }
+        } else if let Some(iface) = add_ifaces.kernel_ifaces.get_mut(port_name)
+        {
+            iface.base_iface_mut().controller = Some(ctrl_name.to_string());
+            iface.base_iface_mut().controller_type = Some(ctrl_type.clone());
         } else {
-            if let Some(iface) = add_ifaces.kernel_ifaces.get_mut(port_name) {
-                iface.base_iface_mut().controller = Some(ctrl_name.to_string());
-                iface.base_iface_mut().controller_type =
-                    Some(ctrl_type.clone());
-            } else {
-                return Err(NmstateError::new(
-                    ErrorKind::InvalidArgument,
-                    format!(
-                        "Port {} of {} interface {} not found in system or \
+            return Err(NmstateError::new(
+                ErrorKind::InvalidArgument,
+                format!(
+                    "Port {} of {} interface {} not found in system or \
                             new desire state",
-                        port_name, ctrl_type, ctrl_name
-                    ),
-                ));
-            }
+                    port_name, ctrl_type, ctrl_name
+                ),
+            ));
         }
     }
     Ok(())

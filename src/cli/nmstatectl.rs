@@ -1,6 +1,5 @@
 mod error;
 
-use clap;
 use env_logger::Builder;
 use log::LevelFilter;
 use nmstate::NetworkState;
@@ -69,28 +68,34 @@ fn main() {
                 ),
         )
         .get_matches();
-    let (log_module_filter, log_level) = match matches.occurrences_of("verbose")
-    {
-        0 => (Some("nmstate"), LevelFilter::Warn),
-        1 => (Some("nmstate"), LevelFilter::Info),
-        2 => (Some("nmstate"), LevelFilter::Debug),
-        _ => (None, LevelFilter::Debug),
-    };
+    let (log_module_filters, log_level) =
+        match matches.occurrences_of("verbose") {
+            0 => (vec!["nmstate", "nm_dbus"], LevelFilter::Warn),
+            1 => (vec!["nmstate", "nm_dbus"], LevelFilter::Info),
+            2 => (vec!["nmstate", "nm_dbus"], LevelFilter::Debug),
+            _ => (vec![""], LevelFilter::Debug),
+        };
 
     let mut log_builder = Builder::new();
-    log_builder.filter(log_module_filter, log_level);
+    for log_module_filter in log_module_filters {
+        if log_module_filter.is_empty() {
+            log_builder.filter(Some(log_module_filter), log_level);
+        } else {
+            log_builder.filter(None, log_level);
+        }
+    }
     log_builder.init();
 
     if let Some(matches) = matches.subcommand_matches(SUB_CMD_GEN_CONF) {
         if let Some(file_path) = matches.value_of("STATE_FILE") {
-            print_result_and_exit(gen_conf(&file_path));
+            print_result_and_exit(gen_conf(file_path));
         }
     } else if let Some(matches) = matches.subcommand_matches(SUB_CMD_SHOW) {
-        print_result_and_exit(show(&matches));
+        print_result_and_exit(show(matches));
     } else if let Some(matches) = matches.subcommand_matches(SUB_CMD_APPLY) {
         if let Some(file_path) = matches.value_of("STATE_FILE") {
             print_result_and_exit(apply(
-                &file_path,
+                file_path,
                 matches.is_present("KERNEL"),
             ));
         }

@@ -16,12 +16,15 @@
 use std::collections::HashMap;
 use std::convert::TryFrom;
 
+use log::warn;
+
 use crate::{
     connection::bridge::{NmSettingBridge, NmSettingBridgePort},
     connection::ip::NmSettingIp,
     dbus_value::{
         value_hash_get_bool, value_hash_get_i32, value_hash_get_string,
     },
+    error::ErrorKind,
     error::NmError,
 };
 
@@ -96,6 +99,31 @@ impl NmConnection {
         } else {
             None
         }
+    }
+
+    pub fn to_keyfile(&self) -> Result<String, NmError> {
+        let mut ret = String::new();
+        let nm_conn_value = self.to_value()?;
+        let mut section_names: Vec<&str> =
+            nm_conn_value.keys().cloned().collect();
+        section_names.sort_unstable();
+
+        // TODO: Sort the sections
+        for section_name in section_names {
+            if let Some(nm_setting) = nm_conn_value.get(section_name) {
+                ret += &format!("[{}]\n", section_name);
+                for (prop_name, prop_value) in nm_setting.iter() {
+                    ret += &format!(
+                        "{}={}\n",
+                        prop_name,
+                        zvariant_value_to_string(prop_value)?
+                    );
+                }
+                ret += "\n";
+            }
+        }
+
+        Ok(ret)
     }
 
     pub(crate) fn to_value(&self) -> Result<NmConnectionDbusValue, NmError> {
@@ -208,5 +236,59 @@ impl NmSettingConnection {
             },
         );
         Ok(ret)
+    }
+}
+
+fn zvariant_value_to_string(
+    value: &zvariant::Value,
+) -> Result<String, NmError> {
+    match value {
+        zvariant::Value::Bool(b) => Ok(if *b {
+            "true".to_string()
+        } else {
+            "false".to_string()
+        }),
+        zvariant::Value::I32(d) => Ok(format!("{}", d)),
+        zvariant::Value::U32(d) => Ok(format!("{}", d)),
+        zvariant::Value::U8(d) => Ok(format!("{}", d)),
+        zvariant::Value::U16(d) => Ok(format!("{}", d)),
+        zvariant::Value::I16(d) => Ok(format!("{}", d)),
+        zvariant::Value::U64(d) => Ok(format!("{}", d)),
+        zvariant::Value::I64(d) => Ok(format!("{}", d)),
+        zvariant::Value::Dict(d) => {
+            let address = d.get("address");
+            let prefix = d.get("prefix");
+            if let Ok(Some(address)) = address {
+                if let Ok(Some(prefix)) = prefix {
+                    return Ok(format!(
+                        "{}/{}",
+                        zvariant_value_to_string(address)?,
+                        zvariant_value_to_string(prefix)?,
+                    ));
+                }
+            }
+            return Err(NmError::new(
+                ErrorKind::Bug,
+                format!("BUG: Unknown dict data {:?}", d),
+            ));
+        }
+        zvariant::Value::Array(a) => {
+            let mut ret = String::new();
+            for item in a.get() {
+                ret += &zvariant_value_to_string(item)?;
+                ret += ";";
+                //ret += &format!("{}={}\n", prop_name, d);
+            }
+            ret.pop();
+            Ok(ret)
+        }
+        zvariant::Value::Str(s) => Ok(s.as_str().to_string()),
+        _ => {
+            warn!("unknown value type {:?}", value);
+            return Err(NmError::new(
+                ErrorKind::Bug,
+                format!("BUG: Unknown value type: {:?}", value),
+            ));
+        }
     }
 }

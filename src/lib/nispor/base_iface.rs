@@ -44,10 +44,7 @@ pub(crate) fn np_iface_to_base_iface(
         ipv4: np_ipv4_to_nmstate(np_iface),
         ipv6: np_ipv6_to_nmstate(np_iface),
         mac_address: Some(np_iface.mac_address.to_string()),
-        controller: np_iface
-            .controller
-            .as_ref()
-            .and_then(|c| Some(c.to_string())),
+        controller: np_iface.controller.as_ref().map(|c| c.to_string()),
         ..Default::default()
     };
     base_iface

@@ -130,7 +130,7 @@ impl NmSettingIp {
             zvariant::Signature::from_str_unchecked("a{sv}"),
         );
         for addr_str in &self.addresses {
-            let addr_str_split: Vec<&str> = addr_str.split("/").collect();
+            let addr_str_split: Vec<&str> = addr_str.split('/').collect();
             if addr_str_split.len() != 2 {
                 return Err(NmError::new(
                     ErrorKind::InvalidArgument,
