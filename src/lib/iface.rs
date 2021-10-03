@@ -4,6 +4,7 @@ use serde::{Deserialize, Deserializer, Serialize};
 use crate::{
     state::get_json_value_difference, BaseInterface, ErrorKind,
     EthernetInterface, LinuxBridgeInterface, NmstateError, VethInterface,
+    VlanInterface,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -138,6 +139,7 @@ pub enum Interface {
     LinuxBridge(LinuxBridgeInterface),
     Ethernet(EthernetInterface),
     Veth(VethInterface),
+    Vlan(VlanInterface),
     Unknown(UnknownInterface),
 }
 
@@ -165,6 +167,11 @@ impl<'de> Deserialize<'de> for Interface {
                     .map_err(serde::de::Error::custom)?;
                 Ok(Interface::Veth(inner))
             }
+            Some(InterfaceType::Vlan) => {
+                let inner = VlanInterface::deserialize(v)
+                    .map_err(serde::de::Error::custom)?;
+                Ok(Interface::Vlan(inner))
+            }
             Some(iface_type) => {
                 warn!("Unsupported interface type {}", iface_type);
                 let inner = UnknownInterface::deserialize(v)
@@ -186,6 +193,7 @@ impl Interface {
             Self::LinuxBridge(iface) => iface.base.name.as_str(),
             Self::Ethernet(iface) => iface.base.name.as_str(),
             Self::Veth(iface) => iface.base.name.as_str(),
+            Self::Vlan(iface) => iface.base.name.as_str(),
             Self::Unknown(iface) => iface.base.name.as_str(),
         }
     }
@@ -203,6 +211,7 @@ impl Interface {
             Self::LinuxBridge(iface) => iface.base.iface_type.clone(),
             Self::Ethernet(iface) => iface.base.iface_type.clone(),
             Self::Veth(iface) => iface.base.iface_type.clone(),
+            Self::Vlan(iface) => iface.base.iface_type.clone(),
             Self::Unknown(iface) => iface.base.iface_type.clone(),
         }
     }
@@ -220,6 +229,7 @@ impl Interface {
             Self::LinuxBridge(iface) => &iface.base,
             Self::Ethernet(iface) => &iface.base,
             Self::Veth(iface) => &iface.base,
+            Self::Vlan(iface) => &iface.base,
             Self::Unknown(iface) => &iface.base,
         }
     }
@@ -229,6 +239,7 @@ impl Interface {
             Self::LinuxBridge(iface) => &mut iface.base,
             Self::Ethernet(iface) => &mut iface.base,
             Self::Veth(iface) => &mut iface.base,
+            Self::Vlan(iface) => &mut iface.base,
             Self::Unknown(iface) => &mut iface.base,
         }
     }
@@ -275,6 +286,17 @@ impl Interface {
                     );
                 }
             }
+            Self::Vlan(iface) => {
+                if let Self::Vlan(other_iface) = other {
+                    iface.update(other_iface);
+                } else {
+                    warn!(
+                        "BUG: Don't know how to update vlan iface \
+                        with {:?}",
+                        other
+                    );
+                }
+            }
             Self::Unknown(iface) => {
                 if let Self::Unknown(other_iface) = other {
                     iface.update(other_iface);
@@ -298,6 +320,9 @@ impl Interface {
                 iface.pre_verify_cleanup();
             }
             Self::Veth(ref mut iface) => {
+                iface.pre_verify_cleanup();
+            }
+            Self::Vlan(ref mut iface) => {
                 iface.pre_verify_cleanup();
             }
             Self::Unknown(ref mut iface) => {

@@ -15,3 +15,11 @@ pub(crate) fn np_veth_to_nmstate(
         veth: veth_conf,
     }
 }
+
+pub(crate) fn nms_veth_conf_to_np(
+    nms_veth_conf: Option<&VethConfig>,
+) -> Option<nispor::VethConf> {
+    nms_veth_conf.map(|nms_veth_conf| nispor::VethConf {
+        peer: nms_veth_conf.peer.to_string(),
+    })
+}

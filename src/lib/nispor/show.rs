@@ -4,7 +4,7 @@ use crate::{
     nispor::{
         base_iface::np_iface_to_base_iface, error::np_error_to_nmstate,
         ethernet::np_ethernet_to_nmstate, linux_bridge::np_bridge_to_nmstate,
-        veth::np_veth_to_nmstate,
+        veth::np_veth_to_nmstate, vlan::np_vlan_to_nmstate,
     },
     Interface, InterfaceType, NetworkState, NmstateError, UnknownInterface,
 };
@@ -30,6 +30,9 @@ pub(crate) fn nispor_retrieve() -> Result<NetworkState, NmstateError> {
             ),
             InterfaceType::Veth => {
                 Interface::Veth(np_veth_to_nmstate(np_iface, base_iface))
+            }
+            InterfaceType::Vlan => {
+                Interface::Vlan(np_vlan_to_nmstate(np_iface, base_iface))
             }
             InterfaceType::Loopback | InterfaceType::Tun => {
                 // Nmstate has no plan on supporting loopback/tun interface

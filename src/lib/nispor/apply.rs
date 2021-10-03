@@ -1,7 +1,11 @@
 use log::warn;
 
 use crate::{
-    nispor::ip::{nmstate_ipv4_to_np, nmstate_ipv6_to_np},
+    nispor::{
+        ip::{nmstate_ipv4_to_np, nmstate_ipv6_to_np},
+        veth::nms_veth_conf_to_np,
+        vlan::nms_vlan_conf_to_np,
+    },
     ErrorKind, Interface, InterfaceType, NetworkState, NmstateError,
     VethConfig,
 };
@@ -57,6 +61,7 @@ fn nmstate_iface_type_to_np(
         InterfaceType::LinuxBridge => nispor::IfaceType::Bridge,
         InterfaceType::Ethernet => nispor::IfaceType::Ethernet,
         InterfaceType::Veth => nispor::IfaceType::Veth,
+        InterfaceType::Vlan => nispor::IfaceType::Vlan,
         _ => nispor::IfaceType::Unknown,
     }
 }
@@ -84,17 +89,11 @@ fn nmstate_iface_to_np(
 
     if let Interface::Veth(veth_iface) = nms_iface {
         np_iface.veth = nms_veth_conf_to_np(veth_iface.veth.as_ref());
+    } else if let Interface::Vlan(vlan_iface) = nms_iface {
+        np_iface.vlan = nms_vlan_conf_to_np(vlan_iface.vlan.as_ref());
     }
 
     Ok(np_iface)
-}
-
-fn nms_veth_conf_to_np(
-    nms_veth_conf: Option<&VethConfig>,
-) -> Option<nispor::VethConf> {
-    nms_veth_conf.map(|nms_veth_conf| nispor::VethConf {
-        peer: nms_veth_conf.peer.to_string(),
-    })
 }
 
 fn apply_single_state(net_state: &NetworkState) -> Result<(), NmstateError> {
