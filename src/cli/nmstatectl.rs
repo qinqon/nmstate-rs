@@ -1,5 +1,7 @@
 mod error;
 
+use std::io::{self, Read};
+
 use env_logger::Builder;
 use log::LevelFilter;
 use nmstate::NetworkState;
@@ -45,7 +47,7 @@ fn main() {
                 .about("Apply network state")
                 .arg(
                     clap::Arg::with_name("STATE_FILE")
-                        .required(true)
+                        .required(false)
                         .index(1)
                         .help("Network state file"),
                 )
@@ -93,11 +95,11 @@ fn main() {
     } else if let Some(matches) = matches.subcommand_matches(SUB_CMD_SHOW) {
         print_result_and_exit(show(matches));
     } else if let Some(matches) = matches.subcommand_matches(SUB_CMD_APPLY) {
+        let is_kernel = matches.is_present("KERNEL");
         if let Some(file_path) = matches.value_of("STATE_FILE") {
-            print_result_and_exit(apply(
-                file_path,
-                matches.is_present("KERNEL"),
-            ));
+            print_result_and_exit(apply_from_file(file_path, is_kernel));
+        } else {
+            print_result_and_exit(apply_from_stdin(is_kernel));
         }
     }
 }
@@ -194,9 +196,16 @@ fn show(matches: &clap::ArgMatches) -> Result<String, CliError> {
     })
 }
 
-fn apply(file_path: &str, kernel_only: bool) -> Result<String, CliError> {
-    let fd = std::fs::File::open(file_path)?;
-    let mut net_state: NetworkState = serde_yaml::from_reader(fd)?;
+fn apply_from_stdin(kernel_only: bool) -> Result<String, CliError> {
+    apply(io::stdin(), kernel_only)
+}
+
+fn apply_from_file(file_path: &str, kernel_only: bool) -> Result<String, CliError> {
+    apply(std::fs::File::open(file_path)?, kernel_only)
+}
+
+fn apply<R>(reader: R, kernel_only: bool) -> Result<String, CliError> where R: Read{
+    let mut net_state: NetworkState = serde_yaml::from_reader(reader)?;
     net_state.set_kernel_only(kernel_only);
     net_state.apply()?;
     let sorted_net_state = sort_netstate(net_state)?;
